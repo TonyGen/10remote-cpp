@@ -144,6 +144,7 @@ namespace remote {
 
 	/** Process running a Program on a host in the network */
 	class Process {
+		friend std::ostream& operator<< (std::ostream& out, const Process& p) {out << p.host << ":" << p.process; return out;}
 	public:
 		Host host;
 		job::Process process;
