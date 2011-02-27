@@ -34,6 +34,7 @@ namespace registrar {
 	public:
 		std::string id;
 		Ref (std::string id) : id(id) {}
+		Ref () {}  // for serialization
 		boost::shared_ptr<T> deref () {return lookup<T> (id);}
 		void remove() {registrar::remove<T> (id);}
 	};

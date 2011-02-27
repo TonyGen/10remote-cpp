@@ -10,6 +10,8 @@
 
 namespace remote {
 
+	extern unsigned Port;
+
 	/** Start thread that will accept rpc requests from network.
 	 * This must be started on every machine in the network */
 	void listen ();
@@ -22,7 +24,7 @@ namespace remote {
 		if (host == "localhost" || host == "127.0.0.1") {
 			return action ();
 		} else {
-			throw "TODO: network::remotely";
+			//TODO
 		}
 	}
 
@@ -36,6 +38,7 @@ namespace remote {
 		Host host;  // Home of reference object. Not checked, lookup will simply fail if id not found
 		registrar::Ref<T> ref;
 		Remote (Host host, registrar::Ref<T> ref) : host(host), ref(ref) {}
+		Remote () {}  // for serialization
 	};
 
 	template <class T> Remote<T> makeRemote (Host host, registrar::Ref<T> ref) {
@@ -45,8 +48,7 @@ namespace remote {
 	/** Apply action to remote object.
 	 * A type: O A (Ref<I>), string A.serialize(), string A.toString() */
 	template <class I, class O, template <typename,typename> class A> O remote (Remote<I> remote, A< O, registrar::Ref<I> > action) {
-		boost::function0<O> act = boost::bind (action, remote.ref);
-		return remotely (remote.host, act);
+		return remotely (remote.host, action0 (action, remote.ref));
 	}
 
 	/*** Thread ***/
@@ -66,6 +68,7 @@ namespace remote {
 		Host host;
 		job::FailedThread failedThread;
 		FailedThread (Host host, job::FailedThread failedThread) : host(host), failedThread(failedThread) {}
+		FailedThread () {}  // for serialization
 		~FailedThread () throw () {}
 		const char* what() const throw () {  // override
 			return failedThread.what();
@@ -74,17 +77,8 @@ namespace remote {
 
 	/** Fork thread on host to execute action
 	 * A type: void A(), string A.serialize(), string A.toString() */
-	template <template <typename> class A, template <typename,typename,typename> class B> Thread fork (Host host, A<void> action, B<void,job::Thread,std::exception&> errorHandler) {
-		boost::function0<job::Thread> act = boost::bind (PROCEDURE2T (job::fork,<A>), action, errorHandler);
-		job::Thread thread = remotely (host, act);
-		return Thread (host, thread);
-	}
-
-	/** Fork thread on host to execute action
-	 * A type: void A(), string A.serialize(), string A.toString() */
-	template <template <typename> class A> Thread fork (Host host, A<void> action) {
-		boost::function0<job::Thread> act = boost::bind (PROCEDURE1T (job::fork,<A>), action);
-		job::Thread thread = remotely (host, act);
+	template <template <typename> class A> Thread fork (Host host, A<Unit> action) {
+		job::Thread thread = remotely (host, action0 (PROCEDURE1T (job::fork,<A>), action));
 		return Thread (host, thread);
 	}
 
@@ -98,29 +92,46 @@ namespace remote {
 	void interruptAll (std::vector<Thread>);
 }
 
+/** Parallel threads and error holder */
+typedef std::pair< var::MVar< std::vector<remote::Thread> > *, boost::shared_ptr <remote::FailedThread> *> ParMain;
+
 namespace _remote {
-	/** notify remote main 'parallel' thread that this local thread failed */
-	void localParallelError (remote::Remote< std::pair< var::MVar< std::vector<remote::Thread> >*, boost::shared_ptr <remote::FailedThread> *> >, job::Thread, std::exception&);
+
+/** Called when one of the parallel threads fails. Terminate remaining threads and set evar */
+Unit parallelError (remote::FailedThread failedThread, registrar::Ref<ParMain> ref);
+
+/** run action locally and notify remote main 'parallel' thread if this local thread fails */
+template <template <typename> class A> Unit runLocalParallelThread (remote::Remote<ParMain> main, A<Unit> action) {
+	try {
+		action();
+	} catch (std::exception &e) {
+		remote::FailedThread ft (remote::thisHost(), job::FailedThread (job::thisThread(), typeid(e).name(), e.what()));
+		remote::remote (main, action1 (PROCEDURE2 (_remote::parallelError), ft));
+	}
+	return unit;
+}
+
 }
 
 namespace remote {
 
 	/** Fork actions on associated hosts and wait for control actions to finish then terminate continuous actions. If one action fails then terminate all actions and rethrow failure in main thread */
-	template <template <typename> class A> void parallel (std::vector< std::pair< Host, A<void> > > controlActions, std::vector< std::pair< Host, A<void> > > continuousActions) {
+	template <template <typename> class A> void parallel (std::vector< std::pair< Host, A<Unit> > > controlActions, std::vector< std::pair< Host, A<Unit> > > continuousActions) {
 		// wrap threads in MVar so all threads are added before anyone fails and terminates them all, otherwise later ones would not be terminated because they started after failure.
 		std::vector<Thread> _threads;
 		var::MVar< std::vector<Thread> > vThreads (_threads);
 		boost::shared_ptr<FailedThread> evar;
-		boost::shared_ptr< std::pair< var::MVar< std::vector<Thread> >*, boost::shared_ptr <FailedThread> *> > p (new std::pair< var::MVar< std::vector<Thread> >*, boost::shared_ptr <FailedThread> *> (&vThreads, &evar));
-		Remote< std::pair< var::MVar< std::vector<Thread> >*, boost::shared_ptr <FailedThread> *> > rem (thisHost(), registrar::add (p));
-		boost::function2 <void,job::Thread,std::exception&> errorHandler = boost::bind (PROCEDURE3 (_remote::localParallelError), rem, _1, _2);
+		boost::shared_ptr<ParMain> p (new ParMain (&vThreads, &evar));
+		Remote<ParMain> rem (thisHost(), registrar::add (p));
 		try {
 			{
 				var::Access< std::vector<Thread> > threads (vThreads);
-				for (unsigned i = 0; i < controlActions.size(); i++)
-					threads->push_back (fork (controlActions[i].first, controlActions[i].second, errorHandler));
-				for (unsigned i = 0; i < continuousActions.size(); i++)
-					threads->push_back (fork (continuousActions[i].first, continuousActions[i].second, errorHandler));
+				for (unsigned i = 0; i < controlActions.size(); i++) {
+					threads->push_back (fork (controlActions[i].first, action0 (PROCEDURE2T (_remote::runLocalParallelThread,<A>), rem, controlActions[i].second)));
+				}
+				for (unsigned i = 0; i < continuousActions.size(); i++) {
+					threads->push_back (fork (continuousActions[i].first, action0 (PROCEDURE2T (_remote::runLocalParallelThread,<A>), rem, continuousActions[i].second)));
+				}
 			}
 			std::vector<Thread> threads = vThreads.read();
 			for (unsigned i = 0; i < controlActions.size(); i++)
@@ -164,5 +175,7 @@ namespace remote {
 	void terminate (Process);
 
 }
+
+#include "serialize.h"  // include after serialized types declared above
 
 #endif /* REMOTE_H_ */
