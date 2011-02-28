@@ -1,7 +1,7 @@
 /* Serialization of objects this package uses */
 
-#ifndef SERIALIZE_H_
-#define SERIALIZE_H_
+#ifndef REMOTE_SERIALIZE_H_
+#define REMOTE_SERIALIZE_H_
 
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/vector.hpp>
@@ -77,6 +77,11 @@ template <class Archive, class T> void serialize (Archive & ar, remote::Remote<T
 	ar & x.ref;
 }
 
+template <class Archive> void serialize (Archive & ar, remote::Process & x, const unsigned version) {
+	ar & x.host;
+	ar & x.process;
+}
+
 }}
 
-#endif /* SERIALIZE_H_ */
+#endif /* REMOTE_SERIALIZE_H_ */

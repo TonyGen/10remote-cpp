@@ -160,6 +160,7 @@ namespace remote {
 		Host host;
 		job::Process process;
 		Process (Host host, job::Process process) : host(host), process(process) {}
+		Process () {}  // for serialization
 	};
 
 	/** Launch program on host */

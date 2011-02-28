@@ -229,17 +229,19 @@ struct BinAction {
 	BinAction (std::string procType, std::string procName, std::string argStream) : procType(procType), procName(procName), argStream(argStream) {}
 	std::string operator() () {
 		std::stringstream sin (argStream);
-		boost::archive::text_iarchive in (sin);
+		boost::archive::text_iarchive in (sin, boost::archive::no_header);
 		std::stringstream sout;
-		boost::archive::text_oarchive out (sout);
+		boost::archive::text_oarchive out (sout, boost::archive::no_header);
+	  std::cout << procName << "::" << procType << "(" << argStream << ") = " << std::endl;
 		procedureBinRegistry [procType] [procName] (in, out);
+	  std::cout << sout.str() << std::endl;
 		return sout.str();
 	}
 };
 
 template <class A> A deserialized (std::string s) {
 	std::stringstream ss (s);
-	boost::archive::text_iarchive ar (ss);
+	boost::archive::text_iarchive ar (ss, boost::archive::no_header);
 	A a;
 	ar >> a;
 	return a;
@@ -270,55 +272,64 @@ template <class O, class I, class J> struct Action2 {
 	Action2 (std::string procType, std::string procName, std::string argStream) : procType(procType), procName(procName), argStream(argStream) {}
 };
 
-template <class A> std::string serialized (A a) {
+template <class A> std::string serialized (std::string prefix, A a) {
 	std::stringstream ss;
-	boost::archive::text_oarchive ar (ss);
+	boost::archive::text_oarchive ar (ss, boost::archive::no_header);
 	ar << a;
-	return ss.str();
+	return prefix + ss.str();
 }
-template <class A, class B> std::string serialized (A a, B b) {
+template <class A, class B> std::string serialized (std::string prefix, A a, B b) {
 	std::stringstream ss;
-	boost::archive::text_oarchive ar (ss);
+	boost::archive::text_oarchive ar (ss, boost::archive::no_header);
 	ar << a; ar << b;
-	return ss.str();
+	return prefix + ss.str();
 }
-template <class A, class B, class C> std::string serialized (A a, B b, C c) {
-	std::stringstream ss;
-	boost::archive::text_oarchive ar (ss);
+template <class A, class B, class C> std::string serialized (std::string prefix, A a, B b, C c) {
+	std::stringstream ss (prefix);
+	boost::archive::text_oarchive ar (ss, boost::archive::no_header);
 	ar << a; ar << b; ar << c;
-	return ss.str();
+	return prefix + ss.str();
 }
 
 /** An action is a closure of a procedure and some arguments, and is serializable. */
 
+template <class O> Action0<O> action0 (Procedure0<O> proc) {
+	return Action0<O> (proc.typeName(), proc.name, "");
+}
 template <class O, class I> Action0<O> action0 (Procedure1<O,I> proc, I arg) {
-	return Action0<O> (proc.typeName(), proc.name, serialized (arg));
+	return Action0<O> (proc.typeName(), proc.name, serialized ("", arg));
 }
 template <class O, class I> Action0<O> action0 (Action1<O,I> x, I arg) {
-	return Action0<O> (x.procType, x.procName, x.argStream + serialized (arg));
+	return Action0<O> (x.procType, x.procName, serialized (x.argStream, arg));
 }
 template <class O, class I, class J> Action0<O> action0 (Procedure2<O,I,J> proc, I arg1, J arg2) {
-	return Action0<O> (proc.typeName(), proc.name, serialized (arg1, arg2));
+	return Action0<O> (proc.typeName(), proc.name, serialized ("", arg1, arg2));
 }
 template <class O, class I, class J> Action0<O> action0 (Action2<O,I,J> x, I arg1, J arg2) {
-	return Action0<O> (x.procType, x.procName, x.argStream + serialized (arg1, arg2));
+	return Action0<O> (x.procType, x.procName, serialized (x.argStream, arg1, arg2));
 }
 template <class O, class I, class J, class K> Action0<O> action0 (Procedure3<O,I,J,K> proc, I arg1, J arg2, K arg3) {
-	return Action0<O> (proc.typeName(), proc.name, serialized (arg1, arg2, arg3));
+	return Action0<O> (proc.typeName(), proc.name, serialized ("", arg1, arg2, arg3));
 }
 
+template <class O, class I> Action1<O,I> action1 (Procedure1<O,I> proc) {
+	return Action1<O,I> (proc.typeName(), proc.name, "");
+}
 template <class O, class I, class J> Action1<O,J> action1 (Procedure2<O,I,J> proc, I arg1) {
-	return Action1<O,J> (proc.typeName(), proc.name, serialized (arg1));
+	return Action1<O,J> (proc.typeName(), proc.name, serialized ("", arg1));
 }
 template <class O, class I, class J> Action1<O,J> action1 (Action2<O,I,J> x, I arg1) {
-	return Action1<O,J> (x.procType, x.procName, x.argStream + serialized (arg1));
+	return Action1<O,J> (x.procType, x.procName, serialized (x.argStream, arg1));
 }
 template <class O, class I, class J, class K> Action1<O,K> action1 (Procedure3<O,I,J,K> proc, I arg1, J arg2) {
-	return Action1<O,K> (proc.typeName(), proc.name, serialized (arg1, arg2));
+	return Action1<O,K> (proc.typeName(), proc.name, serialized ("", arg1, arg2));
 }
 
+template <class O, class I, class J> Action2<O,I,J> action2 (Procedure2<O,I,J> proc) {
+	return Action2<O,I,J> (proc.typeName(), proc.name, "");
+}
 template <class O, class I, class J, class K> Action2<O,J,K> action2 (Procedure3<O,I,J,K> proc, I arg1) {
-	return Action2<O,J,K> (proc.typeName(), proc.name, serialized (arg1));
+	return Action2<O,J,K> (proc.typeName(), proc.name, serialized ("", arg1));
 }
 
 #endif /* PROCEDURE_H_ */
