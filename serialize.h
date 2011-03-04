@@ -64,7 +64,7 @@ template <class Archive, class O, class I, class J, class K> void serialize (Arc
 template <class Archive, class O> void serialize (Archive & ar, Action0<O> & x, const unsigned version) {
 	ar & x.procType;
 	ar & x.procName;
-	ar & x.argStream;
+	ar & x.args;
 }
 
 template <class Archive> void serialize (Archive & ar, remote::FailedThread & x, const unsigned version) {
