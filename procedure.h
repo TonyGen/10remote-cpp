@@ -242,6 +242,7 @@ struct BinAction {
 	std::string procName;
 	std::vector<std::string> args;
 	BinAction (std::string procType, std::string procName, std::vector<std::string> args) : procType(procType), procName(procName), args(args) {}
+	BinAction () {}  // for serialization
 	std::string operator() () {
 		return procedureBinRegistry [procType] [procName] (args);
 	}
@@ -254,9 +255,9 @@ template <class O> struct Action0 {
 	std::vector<std::string> args;
 	Action0 (std::string procType, std::string procName, std::vector<std::string> args) : procType(procType), procName(procName), args(args) {}
 	Action0 () {}  // for serialization
+	BinAction binAction() {return BinAction (procType, procName, args);}
 	O operator() () {
-		BinAction act (procType, procName, args);
-		return deserialized<O> (act());
+		return deserialized<O> (this->binAction()());
 	}
 };
 template <class O, class I> struct Action1 {
@@ -264,12 +265,14 @@ template <class O, class I> struct Action1 {
 	std::string procName;
 	std::vector<std::string> args;
 	Action1 (std::string procType, std::string procName, std::vector<std::string> args) : procType(procType), procName(procName), args(args) {}
+	Action1 () {}  // for serialization
 };
 template <class O, class I, class J> struct Action2 {
 	std::string procType;
 	std::string procName;
 	std::vector<std::string> args;
 	Action2 (std::string procType, std::string procName, std::vector<std::string> args) : procType(procType), procName(procName), args(args) {}
+	Action2 () {}  // for serialization
 };
 
 /** An action is a closure of a procedure and some arguments, and is serializable. */

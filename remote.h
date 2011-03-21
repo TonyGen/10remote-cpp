@@ -7,6 +7,16 @@
 #include <job/job.h>
 #include "procedure.h"
 #include "registrar.h"
+#include <10util/message.h>
+
+namespace remote {
+	typedef std::string Host;
+}
+
+//namespace _remote {
+//	network::Socket connection (remote::Host);
+//	network::Message message (BinAction);
+//}
 
 namespace remote {
 
@@ -16,16 +26,14 @@ namespace remote {
 	 * This must be started on every machine in the network */
 	void listen ();
 
-	typedef std::string Host;
+	/** Execute action on given host, wait for its completion, and return its result */
+	template <class O> O remotely (Host host, Action0<O> action) {
+		if (host == "localhost" || host == "127.0.0.1") return action ();
 
-	/** Execute action on given host, wait for its completion, and return its result
-	 * A type: O A(), string A.serialize(), string A.toString() */
-	template <class O, template <typename> class A> O remotely (Host host, A<O> action) {
-		if (host == "localhost" || host == "127.0.0.1") {
-			return action ();
-		} else {
-			//TODO
-		}
+//		network::Socket sock = _remote::connection (host);
+//		network::Message mess = _remote::message (action.binAction());
+//		network::send (sock, mess);
+
 	}
 
 	/** Return public hostname of localhost */

@@ -61,7 +61,22 @@ template <class Archive, class O, class I, class J, class K> void serialize (Arc
 	ar & x.name;
 }
 
+template <class Archive> void serialize (Archive & ar, BinAction & x, const unsigned version) {
+	ar & x.procType;
+	ar & x.procName;
+	ar & x.args;
+}
 template <class Archive, class O> void serialize (Archive & ar, Action0<O> & x, const unsigned version) {
+	ar & x.procType;
+	ar & x.procName;
+	ar & x.args;
+}
+template <class Archive, class O, class I> void serialize (Archive & ar, Action1<O,I> & x, const unsigned version) {
+	ar & x.procType;
+	ar & x.procName;
+	ar & x.args;
+}
+template <class Archive, class O, class I, class J> void serialize (Archive & ar, Action2<O,I,J> & x, const unsigned version) {
 	ar & x.procType;
 	ar & x.procName;
 	ar & x.args;
