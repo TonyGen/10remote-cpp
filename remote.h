@@ -7,36 +7,42 @@
 #include <job/job.h>
 #include "procedure.h"
 #include "registrar.h"
-#include <10util/message.h>
+#include <10util/call.h>
+#include <utility>
 
 namespace remote {
+	/** "Hostname:Port" or "Hostname" which will use default port */
 	typedef std::string Host;
+
+	/** Extract hostname and port from "Hostname:Port", or "Hostname" which uses default port */
+	std::pair <std::string, unsigned short> hostnameAndPort (Host);
 }
 
-//namespace _remote {
-//	network::Socket connection (remote::Host);
-//	network::Message message (BinAction);
-//}
+namespace _remote {
+	/** One connection per host. Return host's connection or create new one if not created yet. */
+	call::Socket <BinAction, std::string> connection (remote::Host);
+
+	/** Port we are listening on. Set by `listen` */
+	extern unsigned short ListenPort;
+}
 
 namespace remote {
 
-	extern unsigned Port;
+	extern unsigned short DefaultPort;
 
-	/** Start thread that will accept rpc requests from network.
+	/** Start thread that will accept `remotely` requests from network.
 	 * This must be started on every machine in the network */
-	void listen ();
+	void listen (unsigned short port = DefaultPort);
 
 	/** Execute action on given host, wait for its completion, and return its result */
 	template <class O> O remotely (Host host, Action0<O> action) {
-		if (host == "localhost" || host == "127.0.0.1") return action ();
-
-//		network::Socket sock = _remote::connection (host);
-//		network::Message mess = _remote::message (action.binAction());
-//		network::send (sock, mess);
-
+		// if (host == "localhost" || host == "127.0.0.1") return action ();
+		call::Socket <BinAction, std::string> sock = _remote::connection (host);
+		std::string reply = call::call (sock, action.binAction());
+		return deserialized<O> (reply);
 	}
 
-	/** Return public hostname of localhost */
+	/** Return public hostname of localhost with port we are listening on */
 	Host thisHost ();
 
 	/*** Remote Ref ***/
