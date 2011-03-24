@@ -22,6 +22,12 @@ remote::Host remote::thisHost () {
 	return "localhost";  //TODO
 }
 
+/** Fork thread on host to execute action */
+remote::Thread remote::fork (Host host, Action0<Unit> action) {
+	job::Thread thread = remotely (host, action0 (PROCEDURE1T (job::fork,<Action0>), action));
+	return Thread (host, thread);
+}
+
 void remote::interrupt (Thread t) {
 	remotely (t.host, action0 (PROCEDURE1 (job::interrupt), t.thread));
 }
@@ -41,8 +47,11 @@ remote::Thread remote::thisThread () {
 	return Thread (thisHost(), job::thisThread());
 }
 
+/** Parallel threads and error holder */
+typedef std::pair< var::MVar< std::vector<remote::Thread> > *, boost::shared_ptr <remote::FailedThread> *> ParMain;
+
 /** Called when one of the parallel threads fails. Terminate remaining threads and set evar */
-Unit _remote::parallelError (remote::FailedThread failedThread, registrar::Ref<ParMain> ref) {
+static Unit parallelError (remote::FailedThread failedThread, registrar::Ref<ParMain> ref) {
 	boost::shared_ptr<ParMain> p = ref.deref();
 	p->second->reset (new remote::FailedThread (failedThread));
 	{
@@ -50,6 +59,50 @@ Unit _remote::parallelError (remote::FailedThread failedThread, registrar::Ref<P
 		remote::interruptAll (*threads);
 	}
 	return unit;
+}
+
+/** Run action locally and notify remote main 'parallel' thread if this local thread fails */
+static Unit runLocalParallelThread (remote::Remote<ParMain> main, Action0<Unit> action) {
+	try {
+		action();
+	} catch (std::exception &e) {
+		remote::FailedThread ft (remote::thisHost(), job::FailedThread (job::thisThread(), typeid(e).name(), e.what()));
+		remote::remote (main, action1 (PROCEDURE2 (parallelError), ft));
+	}
+	return unit;
+}
+
+/** Fork actions on associated hosts and wait for control actions to finish then terminate continuous actions. If one action fails then terminate all actions and rethrow failure in main thread */
+void remote::parallel (std::vector< std::pair< Host, Action0<Unit> > > controlActions, std::vector< std::pair< Host, Action0<Unit> > > continuousActions) {
+	// wrap threads in MVar so all threads are added before anyone fails and terminates them all, otherwise later ones would not be terminated because they started after failure.
+	std::vector<Thread> _threads;
+	var::MVar< std::vector<Thread> > vThreads (_threads);
+	boost::shared_ptr<FailedThread> evar;
+	boost::shared_ptr<ParMain> p (new ParMain (&vThreads, &evar));
+	Remote<ParMain> rem (thisHost(), registrar::add (p));
+	try {
+		{
+			var::Access< std::vector<Thread> > threads (vThreads);
+			for (unsigned i = 0; i < controlActions.size(); i++) {
+				threads->push_back (fork (controlActions[i].first, action0 (PROCEDURE2 (runLocalParallelThread), rem, controlActions[i].second)));
+			}
+			for (unsigned i = 0; i < continuousActions.size(); i++) {
+				threads->push_back (fork (continuousActions[i].first, action0 (PROCEDURE2 (runLocalParallelThread), rem, continuousActions[i].second)));
+			}
+		}
+		std::vector<Thread> threads = vThreads.read();
+		for (unsigned i = 0; i < controlActions.size(); i++)
+			join (threads[i]);
+		for (unsigned i = controlActions.size(); i < threads.size(); i++)
+			interrupt (threads[i]);
+		if (evar) throw *evar;
+	} catch (boost::thread_interrupted &e) {
+		{
+			var::Access< std::vector<Thread> > threads (vThreads);
+			interruptAll (*threads);
+		}
+		throw;
+	}
 }
 
 /** Launch program on host */
@@ -77,8 +130,8 @@ static void registerProcedures () {
 	REGISTER_PROCEDURE1 (job::restart);
 	REGISTER_PROCEDURE1 (job::interrupt);
 	REGISTER_PROCEDURE1 (job::join);
-	REGISTER_PROCEDURE2T (_remote::runLocalParallelThread,<Action0>);
-	REGISTER_PROCEDURE2 (_remote::parallelError);
+	REGISTER_PROCEDURE2 (runLocalParallelThread);
+	REGISTER_PROCEDURE2 (parallelError);
 	REGISTER_PROCEDURE2 (job::signal);
 	REGISTER_PROCEDURE1 (job::terminate);
 	REGISTER_PROCEDURE0 (job::interruptThreads);
@@ -88,7 +141,8 @@ static void registerProcedures () {
 
 static std::map <remote::Host, call::Socket <BinAction, std::string> > Connections;
 
-/** One connection per host. Return host's connection or create new one if not created yet. */
+/** One connection per host. Return host's connection or create new one if not created yet.
+ * TODO: On socket exception close and remove connection from Connections */
 call::Socket <BinAction, std::string> _remote::connection (remote::Host host) {
 	call::Socket <BinAction, std::string> sock = Connections [host];
 	if (! sock.xsock) {
@@ -102,10 +156,10 @@ static std::string reply (BinAction action) {
 	return action ();
 }
 
-/** Start thread that will accept `remotely` requests from network.
+/** Start thread that will accept `remotely` requests from network. Does not return.
  * This must be started on every machine in the network */
 void remote::listen (unsigned short port) {
 	registerProcedures();
-	call::listen (call::Port <BinAction, std::string> (port), reply);
 	_remote::ListenPort = port;
+	call::listen (call::Port <BinAction, std::string> (port), reply);
 }

@@ -14,6 +14,7 @@ template <class Archive> void serialize (Archive & ar, Unit & x, const unsigned 
 
 template <class Archive> void serialize (Archive & ar, boost::thread::id & x, const unsigned version) {
 	//TODO
+	std::cerr << "can't serialize boost::thread::id" << std::endl;
 }
 
 template <class Archive> void serialize (Archive & ar, job::Thread & x, const unsigned version) {

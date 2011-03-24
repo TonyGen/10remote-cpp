@@ -89,12 +89,8 @@ namespace remote {
 		}
 	};
 
-	/** Fork thread on host to execute action
-	 * A type: void A(), string A.serialize(), string A.toString() */
-	template <template <typename> class A> Thread fork (Host host, A<Unit> action) {
-		job::Thread thread = remotely (host, action0 (PROCEDURE1T (job::fork,<A>), action));
-		return Thread (host, thread);
-	}
+	/** Fork thread on host to execute action */
+	Thread fork (Host host, Action0<Unit> action);
 
 	/** Wait for thread to complete */
 	void join (Thread);
@@ -104,63 +100,9 @@ namespace remote {
 
 	/** Kill given threads */
 	void interruptAll (std::vector<Thread>);
-}
-
-/** Parallel threads and error holder */
-typedef std::pair< var::MVar< std::vector<remote::Thread> > *, boost::shared_ptr <remote::FailedThread> *> ParMain;
-
-namespace _remote {
-
-/** Called when one of the parallel threads fails. Terminate remaining threads and set evar */
-Unit parallelError (remote::FailedThread failedThread, registrar::Ref<ParMain> ref);
-
-/** run action locally and notify remote main 'parallel' thread if this local thread fails */
-template <template <typename> class A> Unit runLocalParallelThread (remote::Remote<ParMain> main, A<Unit> action) {
-	try {
-		action();
-	} catch (std::exception &e) {
-		remote::FailedThread ft (remote::thisHost(), job::FailedThread (job::thisThread(), typeid(e).name(), e.what()));
-		remote::remote (main, action1 (PROCEDURE2 (_remote::parallelError), ft));
-	}
-	return unit;
-}
-
-}
-
-namespace remote {
 
 	/** Fork actions on associated hosts and wait for control actions to finish then terminate continuous actions. If one action fails then terminate all actions and rethrow failure in main thread */
-	template <template <typename> class A> void parallel (std::vector< std::pair< Host, A<Unit> > > controlActions, std::vector< std::pair< Host, A<Unit> > > continuousActions) {
-		// wrap threads in MVar so all threads are added before anyone fails and terminates them all, otherwise later ones would not be terminated because they started after failure.
-		std::vector<Thread> _threads;
-		var::MVar< std::vector<Thread> > vThreads (_threads);
-		boost::shared_ptr<FailedThread> evar;
-		boost::shared_ptr<ParMain> p (new ParMain (&vThreads, &evar));
-		Remote<ParMain> rem (thisHost(), registrar::add (p));
-		try {
-			{
-				var::Access< std::vector<Thread> > threads (vThreads);
-				for (unsigned i = 0; i < controlActions.size(); i++) {
-					threads->push_back (fork (controlActions[i].first, action0 (PROCEDURE2T (_remote::runLocalParallelThread,<A>), rem, controlActions[i].second)));
-				}
-				for (unsigned i = 0; i < continuousActions.size(); i++) {
-					threads->push_back (fork (continuousActions[i].first, action0 (PROCEDURE2T (_remote::runLocalParallelThread,<A>), rem, continuousActions[i].second)));
-				}
-			}
-			std::vector<Thread> threads = vThreads.read();
-			for (unsigned i = 0; i < controlActions.size(); i++)
-				join (threads[i]);
-			for (unsigned i = controlActions.size(); i < threads.size(); i++)
-				interrupt (threads[i]);
-			if (evar) throw *evar;
-		} catch (boost::thread_interrupted &e) {
-			{
-				var::Access< std::vector<Thread> > threads (vThreads);
-				interruptAll (*threads);
-			}
-			throw;
-		}
-	}
+	void parallel (std::vector< std::pair< Host, Action0<Unit> > > controlActions, std::vector< std::pair< Host, Action0<Unit> > > continuousActions);
 
 	/** This thread as a network thread on this host. Assumes running thread was created via fork so it is registered in shell threads */
 	Thread thisThread ();
