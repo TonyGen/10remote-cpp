@@ -1,4 +1,4 @@
-/* Global store of objects referenced by id (and type) */
+/* Registry of objects referenced by id and type. Useful for remote reference to an object (see remote.h) */
 
 #ifndef REGISTRAR_H_
 #define REGISTRAR_H_
@@ -51,5 +51,16 @@ namespace registrar {
 	}
 
 }
+
+/* Serialization */
+
+namespace boost {
+namespace serialization {
+
+template <class Archive, class T> void serialize (Archive & ar, registrar::Ref<T> & x, const unsigned version) {
+	ar & x.id;
+}
+
+}}
 
 #endif /* REGISTRAR_H_ */

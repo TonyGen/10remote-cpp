@@ -4,13 +4,15 @@
  * Run as: `echo server <port>` and `echo client <hostname> <port> <message>` */
 
 #include <iostream>
+#include <job/thread.h>
 #include <remote/remote.h>
+#include <remote/thread.h>
 #include <utility>
 
 using namespace std;
 
 static Unit echo (int pause, string req) {
-	job::sleep (pause);
+	thread::sleep (pause);
 	cout << req << endl;
 	return unit;
 }
@@ -18,7 +20,7 @@ static Unit echo (int pause, string req) {
 void mainClient (remote::Host server, int pause, string message) {
 	pair <string, unsigned short> x = remote::hostnameAndPort (server);
 	cout << "connect to " << x.first << ":" << x.second << endl;
-	remote::Thread t = remote::fork (server, action0 (PROCEDURE2 (echo), pause, message));
+	rthread::Thread t = rthread::fork (server, action0 (PROCEDURE2 (echo), pause, message));
 	cout << t << endl;
 }
 

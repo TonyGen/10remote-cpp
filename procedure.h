@@ -345,4 +345,45 @@ template <class O, class I, class J, class K> Action2<O,J,K> action2 (Procedure3
 	return Action2<O,J,K> (proc.typeName(), proc.name, args);
 }
 
+/* Serialization */
+
+namespace boost {
+namespace serialization {
+
+template <class Archive, class O> void serialize (Archive & ar, Procedure0<O> & x, const unsigned version) {
+	ar & x.name;
+}
+template <class Archive, class O, class I> void serialize (Archive & ar, Procedure1<O,I> & x, const unsigned version) {
+	ar & x.name;
+}
+template <class Archive, class O, class I, class J> void serialize (Archive & ar, Procedure2<O,I,J> & x, const unsigned version) {
+	ar & x.name;
+}
+template <class Archive, class O, class I, class J, class K> void serialize (Archive & ar, Procedure3<O,I,J,K> & x, const unsigned version) {
+	ar & x.name;
+}
+
+template <class Archive> void serialize (Archive & ar, BinAction & x, const unsigned version) {
+	ar & x.procType;
+	ar & x.procName;
+	ar & x.args;
+}
+template <class Archive, class O> void serialize (Archive & ar, Action0<O> & x, const unsigned version) {
+	ar & x.procType;
+	ar & x.procName;
+	ar & x.args;
+}
+template <class Archive, class O, class I> void serialize (Archive & ar, Action1<O,I> & x, const unsigned version) {
+	ar & x.procType;
+	ar & x.procName;
+	ar & x.args;
+}
+template <class Archive, class O, class I, class J> void serialize (Archive & ar, Action2<O,I,J> & x, const unsigned version) {
+	ar & x.procType;
+	ar & x.procName;
+	ar & x.args;
+}
+
+}}
+
 #endif /* PROCEDURE_H_ */
