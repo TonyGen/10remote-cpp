@@ -24,7 +24,8 @@ void mainClient (remote::Host server, string message) {
 void mainServer (unsigned short localPort) {
 	REGISTER_PROCEDURE1 (echo);
 	cout << "listen on " << localPort << endl;
-	remote::listen (localPort);
+	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
+	t->join();  // wait forever
 }
 
 static string usage = "Try `echo server <port>` or `echo client <hostname>:<port> <message>`";

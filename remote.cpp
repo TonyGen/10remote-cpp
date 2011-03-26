@@ -43,11 +43,11 @@ static std::string reply (BinAction action) {
 	return action ();
 }
 
-/** Start thread that will accept `remotely` requests from network. Does not return.
+/** Start thread that will accept `remotely` requests from network.
  * This must be started on every machine in the network */
-void remote::listen (unsigned short port) {
+boost::shared_ptr <boost::thread> remote::listen (unsigned short port) {
 	_rthread::registerProcedures();
 	_rprocess::registerProcedures();
 	_remote::ListenPort = port;
-	call::listen (call::Port <BinAction, std::string> (port), reply);
+	return call::listen (call::Port <BinAction, std::string> (port), reply);
 }

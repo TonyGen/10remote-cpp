@@ -31,7 +31,7 @@ namespace remote {
 
 	/** Start thread that will accept `remotely` requests from network.
 	 * This must be started on every machine in the network */
-	void listen (unsigned short port = DefaultPort);
+	boost::shared_ptr <boost::thread> listen (unsigned short port = DefaultPort);
 
 	/** Execute action on given host, wait for its completion, and return its result */
 	template <class O> O remotely (Host host, Action0<O> action) {

@@ -27,7 +27,8 @@ void mainClient (remote::Host server, int pause, string message) {
 void mainServer (unsigned short localPort) {
 	REGISTER_PROCEDURE2 (echo);
 	cout << "listen on " << localPort << endl;
-	remote::listen (localPort);
+	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
+	t->join();  // wait forever
 }
 
 static string usage = "Try `fork server <port>` or `fork client <hostname>:<port> <pause> <message>`";
