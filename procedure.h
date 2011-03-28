@@ -345,6 +345,13 @@ template <class O, class I, class J, class K> Action2<O,J,K> action2 (Procedure3
 	return Action2<O,J,K> (proc.typeName(), proc.name, args);
 }
 
+template <class O, class I> std::vector< Action0<O> > mapAct (Action1<O,I> act1, std::vector<I> args) {
+	std::vector< Action0<O> > list;
+	for (unsigned i = 0; i < args.size(); i++)
+		list.push_back (action0 (act1, args[i]));
+	return list;
+}
+
 /* Serialization */
 
 namespace boost {
