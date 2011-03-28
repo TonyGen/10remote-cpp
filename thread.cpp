@@ -5,13 +5,13 @@
 #include <10util/util.h>
 
 /** Fork thread on host to execute action */
-rthread::Thread rthread::fork (remote::Host host, Action0<Unit> action) {
-	thread::Thread thread = remote::remotely (host, action0 (PROCEDURE1T (thread::fork,<Action0>), action));
+rthread::Thread rthread::fork (remote::Host host, Thunk<Unit> action) {
+	thread::Thread thread = remote::remotely (host, PROCEDURET(thread::fork,<Thunk>) (action));
 	return Thread (host, thread);
 }
 
 void rthread::interrupt (Thread t) {
-	remote::remotely (t.host, action0 (PROCEDURE1 (thread::interrupt), t.thread));
+	remote::remotely (t.host, PROCEDURE(thread::interrupt) (t.thread));
 }
 
 void rthread::interruptAll (std::vector<Thread> ts) {
@@ -21,7 +21,7 @@ void rthread::interruptAll (std::vector<Thread> ts) {
 
 /** Wait for thread to complete */
 void rthread::join (Thread th) {
-	remote::remotely (th.host, action0 (PROCEDURE1 (thread::join), th.thread));
+	remote::remotely (th.host, PROCEDURE(thread::join) (th.thread));
 }
 
 /** This thread as a network thread on this host. Assumes running thread was created via fork so it is registered in shell threads */
@@ -44,18 +44,18 @@ static Unit parallelError (rthread::FailedThread failedThread, registrar::Ref<Pa
 }
 
 /** Run action locally and notify remote main 'parallel' thread if this local thread fails */
-static Unit runLocalParallelThread (remote::Remote<ParMain> main, Action0<Unit> action) {
+static Unit runLocalParallelThread (remote::Remote<ParMain> main, Thunk<Unit> action) {
 	try {
 		action();
 	} catch (std::exception &e) {
 		rthread::FailedThread ft (remote::thisHost(), thread::FailedThread (thread::thisThread(), typeid(e).name(), e.what()));
-		remote::remote (main, action1 (PROCEDURE2 (parallelError), ft));
+		remote::remote (main, PROCEDURE(parallelError) (ft));
 	}
 	return unit;
 }
 
 /** Fork actions on associated hosts and wait for control actions to finish then terminate continuous actions. If one action fails then terminate all actions and rethrow failure in main thread */
-void rthread::parallel (std::vector< std::pair< remote::Host, Action0<Unit> > > controlActions, std::vector< std::pair< remote::Host, Action0<Unit> > > continuousActions) {
+void rthread::parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > controlActions, std::vector< std::pair< remote::Host, Thunk<Unit> > > continuousActions) {
 	// wrap threads in MVar so all threads are added before anyone fails and terminates them all, otherwise later ones would not be terminated because they started after failure.
 	std::vector<Thread> _threads;
 	var::MVar< std::vector<Thread> > vThreads (_threads);
@@ -66,10 +66,10 @@ void rthread::parallel (std::vector< std::pair< remote::Host, Action0<Unit> > > 
 		{
 			var::Access< std::vector<Thread> > threads (vThreads);
 			for (unsigned i = 0; i < controlActions.size(); i++) {
-				threads->push_back (fork (controlActions[i].first, action0 (PROCEDURE2 (runLocalParallelThread), rem, controlActions[i].second)));
+				threads->push_back (fork (controlActions[i].first, PROCEDURE(runLocalParallelThread) (rem) (controlActions[i].second)));
 			}
 			for (unsigned i = 0; i < continuousActions.size(); i++) {
-				threads->push_back (fork (continuousActions[i].first, action0 (PROCEDURE2 (runLocalParallelThread), rem, continuousActions[i].second)));
+				threads->push_back (fork (continuousActions[i].first, PROCEDURE(runLocalParallelThread) (rem) (continuousActions[i].second)));
 			}
 		}
 		std::vector<Thread> threads = vThreads.read();
@@ -88,9 +88,9 @@ void rthread::parallel (std::vector< std::pair< remote::Host, Action0<Unit> > > 
 }
 
 void _rthread::registerProcedures () {
-	REGISTER_PROCEDURE1T (thread::fork,<Action0>);
-	REGISTER_PROCEDURE1 (thread::interrupt);
-	REGISTER_PROCEDURE1 (thread::join);
-	REGISTER_PROCEDURE2 (runLocalParallelThread);
-	REGISTER_PROCEDURE2 (parallelError);
+	REGISTER_PROCEDURET (thread::fork,<Thunk>);
+	REGISTER_PROCEDURE (thread::interrupt);
+	REGISTER_PROCEDURE (thread::join);
+	REGISTER_PROCEDURE (runLocalParallelThread);
+	REGISTER_PROCEDURE (parallelError);
 }

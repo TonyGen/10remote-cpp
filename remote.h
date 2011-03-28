@@ -19,7 +19,7 @@ namespace remote {
 
 namespace _remote {  // private namespace
 	/** One connection per host. Return host's connection or create new one if not created yet. */
-	call::Socket <BinAction, std::string> connection (remote::Host);
+	call::Socket <Closure, std::string> connection (remote::Host);
 
 	/** Port we are listening on. Set by `listen` */
 	extern unsigned short ListenPort;
@@ -34,10 +34,10 @@ namespace remote {
 	boost::shared_ptr <boost::thread> listen (unsigned short port = DefaultPort);
 
 	/** Execute action on given host, wait for its completion, and return its result */
-	template <class O> O remotely (Host host, Action0<O> action) {
+	template <class O> O remotely (Host host, Thunk<O> action) {
 		// if (host == "localhost" || host == "127.0.0.1") return action ();
-		call::Socket <BinAction, std::string> sock = _remote::connection (host);
-		std::string reply = call::call (sock, action.binAction());
+		call::Socket <Closure, std::string> sock = _remote::connection (host);
+		std::string reply = call::call (sock, action.closure);
 		return deserialized<O> (reply);
 	}
 
@@ -58,10 +58,9 @@ namespace remote {
 		return Remote<T> (host, ref);
 	}
 
-	/** Apply action to remote object.
-	 * A type: O A (Ref<I>), string A.serialize(), string A.toString() */
-	template <class I, class O, template <typename,typename> class A> O remote (Remote<I> remote, A< O, registrar::Ref<I> > action) {
-		return remotely (remote.host, action0 (action, remote.ref));
+	/** Apply action to remote object */
+	template <class I, class O> O remote (Remote<I> remote, Fun< Thunk<O>, registrar::Ref<I> > action) {
+		return remotely (remote.host, action (remote.ref));
 	}
 
 }

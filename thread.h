@@ -37,7 +37,7 @@ namespace rthread {
 	};
 
 	/** Fork thread on host to execute action */
-	Thread fork (remote::Host host, Action0<Unit> action);
+	Thread fork (remote::Host host, Thunk<Unit> action);
 
 	/** Wait for thread to complete */
 	void join (Thread);
@@ -49,7 +49,7 @@ namespace rthread {
 	void interruptAll (std::vector<Thread>);
 
 	/** Fork actions on associated hosts and wait for control actions to finish then terminate continuous actions. If one action fails then terminate all actions and rethrow failure in main thread */
-	void parallel (std::vector< std::pair< remote::Host, Action0<Unit> > > controlActions, std::vector< std::pair< remote::Host, Action0<Unit> > > continuousActions);
+	void parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > controlActions, std::vector< std::pair< remote::Host, Thunk<Unit> > > continuousActions);
 
 	/** This thread as a network thread on this host. Assumes running thread was created via fork so it is registered in shell threads */
 	Thread thisThread ();

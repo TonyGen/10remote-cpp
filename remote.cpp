@@ -26,20 +26,20 @@ remote::Host remote::thisHost () {
 	return "localhost";  //TODO
 }
 
-static std::map <remote::Host, call::Socket <BinAction, std::string> > Connections;
+static std::map <remote::Host, call::Socket <Closure, std::string> > Connections;
 
 /** One connection per host. Return host's connection or create new one if not created yet.
  * TODO: On socket exception close and remove connection from Connections */
-call::Socket <BinAction, std::string> _remote::connection (remote::Host host) {
-	call::Socket <BinAction, std::string> sock = Connections [host];
+call::Socket <Closure, std::string> _remote::connection (remote::Host host) {
+	call::Socket <Closure, std::string> sock = Connections [host];
 	if (! sock.xsock) {
 		std::pair <std::string, unsigned short> hostAndPort = remote::hostnameAndPort (host);
-		sock = call::connect (hostAndPort.first, call::Port <BinAction, std::string> (hostAndPort.second));
+		sock = call::connect (hostAndPort.first, call::Port <Closure, std::string> (hostAndPort.second));
 	}
 	return sock;
 }
 
-static std::string reply (BinAction action) {
+static std::string reply (Closure action) {
 	return action ();
 }
 
@@ -49,5 +49,5 @@ boost::shared_ptr <boost::thread> remote::listen (unsigned short port) {
 	_rthread::registerProcedures();
 	_rprocess::registerProcedures();
 	_remote::ListenPort = port;
-	return call::listen (call::Port <BinAction, std::string> (port), reply);
+	return call::listen (call::Port <Closure, std::string> (port), reply);
 }
