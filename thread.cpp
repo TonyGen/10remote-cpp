@@ -30,7 +30,7 @@ rthread::Thread rthread::thisThread () {
 }
 
 /** Parallel threads and error holder */
-typedef std::pair< var::MVar< std::vector<rthread::Thread> > *, boost::shared_ptr <rthread::FailedThread> *> ParMain;
+typedef std::pair< boost::shared_ptr< var::MVar< std::vector<rthread::Thread> > >, boost::shared_ptr< boost::shared_ptr <rthread::FailedThread> > > ParMain;
 
 /** Called when one of the parallel threads fails. Terminate remaining threads and set evar */
 static Unit parallelError (rthread::FailedThread failedThread, registrar::Ref<ParMain> ref) {
@@ -58,13 +58,13 @@ static Unit runLocalParallelThread (remote::Remote<ParMain> main, Thunk<Unit> ac
 void rthread::parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > controlActions, std::vector< std::pair< remote::Host, Thunk<Unit> > > continuousActions) {
 	// wrap threads in MVar so all threads are added before anyone fails and terminates them all, otherwise later ones would not be terminated because they started after failure.
 	std::vector<Thread> _threads;
-	var::MVar< std::vector<Thread> > vThreads (_threads);
-	boost::shared_ptr<FailedThread> evar;
-	boost::shared_ptr<ParMain> p (new ParMain (&vThreads, &evar));
+	boost::shared_ptr< var::MVar< std::vector<Thread> > > vThreads (new var::MVar< std::vector<Thread> > (std::vector<Thread>()));
+	boost::shared_ptr< boost::shared_ptr<FailedThread> > evar (new boost::shared_ptr<FailedThread>());
+	boost::shared_ptr<ParMain> p (new ParMain (vThreads, evar));
 	remote::Remote<ParMain> rem (remote::thisHost(), registrar::add (p));
 	try {
 		{
-			var::Access< std::vector<Thread> > threads (vThreads);
+			var::Access< std::vector<Thread> > threads (*vThreads);
 			for (unsigned i = 0; i < controlActions.size(); i++) {
 				threads->push_back (fork (controlActions[i].first, PROCEDURE(runLocalParallelThread) (rem) (controlActions[i].second)));
 			}
@@ -72,15 +72,15 @@ void rthread::parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > co
 				threads->push_back (fork (continuousActions[i].first, PROCEDURE(runLocalParallelThread) (rem) (continuousActions[i].second)));
 			}
 		}
-		std::vector<Thread> threads = vThreads.read();
+		std::vector<Thread> threads = vThreads->read();
 		for (unsigned i = 0; i < controlActions.size(); i++)
 			join (threads[i]);
 		for (unsigned i = controlActions.size(); i < threads.size(); i++)
 			interrupt (threads[i]);
-		if (evar) throw *evar;
+		if (*evar) throw **evar;
 	} catch (boost::thread_interrupted &e) {
 		{
-			var::Access< std::vector<Thread> > threads (vThreads);
+			var::Access< std::vector<Thread> > threads (*vThreads);
 			interruptAll (*threads);
 		}
 		throw;

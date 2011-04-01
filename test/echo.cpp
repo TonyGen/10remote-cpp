@@ -17,12 +17,12 @@ static string echo (string req) {
 void mainClient (remote::Host server, string message) {
 	pair <string, unsigned short> x = remote::hostnameAndPort (server);
 	cout << "connect to " << x.first << ":" << x.second << endl;
-	string reply = remote::remotely (server, action0 (PROCEDURE1 (echo), message));
+	string reply = remote::remotely (server, PROCEDURE (echo) (message));
 	cout << reply << endl;
 }
 
 void mainServer (unsigned short localPort) {
-	REGISTER_PROCEDURE1 (echo);
+	REGISTER_PROCEDURE (echo);
 	cout << "listen on " << localPort << endl;
 	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
 	t->join();  // wait forever

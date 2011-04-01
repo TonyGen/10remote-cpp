@@ -20,12 +20,12 @@ static Unit echo (int pause, string req) {
 void mainClient (remote::Host server, int pause, string message) {
 	pair <string, unsigned short> x = remote::hostnameAndPort (server);
 	cout << "connect to " << x.first << ":" << x.second << endl;
-	rthread::Thread t = rthread::fork (server, action0 (PROCEDURE2 (echo), pause, message));
+	rthread::Thread t = rthread::fork (server, PROCEDURE(echo) (pause) (message));
 	cout << t << endl;
 }
 
 void mainServer (unsigned short localPort) {
-	REGISTER_PROCEDURE2 (echo);
+	REGISTER_PROCEDURE (echo);
 	cout << "listen on " << localPort << endl;
 	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
 	t->join();  // wait forever
