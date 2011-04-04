@@ -4,6 +4,7 @@
 #include <iostream>
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
+#include <10util/util.h>
 
 using boost::asio::ip::tcp;
 

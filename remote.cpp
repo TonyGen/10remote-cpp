@@ -5,10 +5,6 @@
 #include <map>
 #include <10util/util.h>
 
-// for registerProcedures only
-#include "thread.h"
-#include "process.h"
-
 unsigned short remote::DefaultPort = 52348;
 
 /** Extract hostname and port from "Hostname:Port", or "Hostname" which uses default port */
@@ -46,8 +42,6 @@ static std::string reply (Closure action) {
 /** Start thread that will accept `remotely` requests from network.
  * This must be started on every machine in the network */
 boost::shared_ptr <boost::thread> remote::listen (unsigned short port) {
-	_rthread::registerProcedures();
-	_rprocess::registerProcedures();
 	_remote::ListenPort = port;
 	return call::listen (call::Port <Closure, std::string> (port), reply);
 }
