@@ -1,6 +1,6 @@
 Install dependent library first
 
-- [job](https://github.com/TonyGen/job-cpp)
+- [10util](https://github.com/TonyGen/10util-cpp)
 
 Download and remove '-ccp' suffix
 	git clone git://github.com/TonyGen/remote-cpp.git remote
