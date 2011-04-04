@@ -4,7 +4,8 @@
  * Run as: `message server <port>` and `message client <hostname> <port> <message>` */
 
 #include <iostream>
-#include <10util/message.h>
+#include <10util/util.h>
+#include <remote/message.h>
 
 void mainClient (std::string serverHost, unsigned short serverPort, std::string message) {
 	message::Socket sock = message::connect (serverHost, serverPort);

@@ -3,17 +3,25 @@
  * Run as: `test` */
 
 #include <iostream>
-#include <remote/procedure.h>
 #include <10util/util.h>
+#include <remote/procedure.h>
+#include <remote/message.h>
 
 using namespace std;
 
+void test_intBytes () {
+	unsigned int n = _message::bytesAsInt (_message::intAsBytes (228));
+	std::cout << n << std::endl;
+	assert (n == 228);
+}
+
 static int hello (string arg) {return 1;}
-static void goodbye (unsigned arg, string arg2) {}
+static Unit goodbye (unsigned arg, string arg2) {return unit;}
 
 int main (int argc, const char* argv[]) {
+	test_intBytes();
 	Fun <Thunk<int>, string> x = PROCEDURE (hello);
 	cout << x.closure.funId << endl;
-	Fun2 (Thunk<void>, unsigned, string) y = PROCEDURE (goodbye);
+	Fun2 (Thunk<Unit>, unsigned, string) y = PROCEDURE (goodbye);
 	cout << y.closure.funId << endl;
 }

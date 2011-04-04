@@ -4,7 +4,8 @@
  * Run as: `call server <port>` and `call client <hostname> <port> <message>` */
 
 #include <iostream>
-#include <10util/call.h>
+#include <10util/util.h>
+#include <remote/call.h>
 
 using namespace std;
 
