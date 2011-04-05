@@ -15,6 +15,7 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
+#include <exception>
 
 template <class A> A deserialized (std::string s) {
 	std::stringstream ss (s);
@@ -125,6 +126,16 @@ template <class O, class I, class J, class K> void registerProcedure (std::strin
 #define REGISTER_PROCEDURE(functionName) registerProcedure (#functionName, &functionName)
 #define REGISTER_PROCEDURET(functionName,templateParams) registerProcedure (#functionName, & functionName templateParams)
 
+class ProcedureNotFound : public std::exception {
+public:
+	FunctionId funId;
+	ProcedureNotFound (FunctionId funId) : funId(funId) {}
+	virtual const char* what() const throw() {
+		std::stringstream ss;
+		ss << "ProcedureNotFound: " << funId;
+		return ss.str().c_str();
+	}
+};
 
 /** Closure captures already supplied args in their serialized form */
 struct Closure {
@@ -135,7 +146,11 @@ struct Closure {
 	Closure (Closure closure, std::string arg) : funId(closure.funId), args(closure.args) {args.push_back(arg);} // add arg
 	Closure () {} // for serialization
 	/** Apply fun to deserialized args and return result serialized. All fun's args must be present */
-	std::string operator() () {return procedureRegistry [funId] (args);}
+	std::string operator() () {
+		std::map<FunctionId,BinFun>::iterator it = procedureRegistry.find (funId);
+		if (it == procedureRegistry.end()) throw ProcedureNotFound (funId);
+		return it->second (args);
+	}
 };
 
 /** Closure with more args expected in curried form (Res is either another Fun or a Thunk).
