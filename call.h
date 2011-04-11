@@ -44,6 +44,10 @@ template <class Request, class Response> void respondLoop (boost::function1 <Res
 	}
 }
 
+template <class Request, class Response> void acceptClient (boost::function1 <Response, Request> respond, message::Socket sock) {
+	boost::thread _th (boost::bind (respondLoop <Request, Response>, respond, sock));
+}
+
 }
 
 /** Public */
@@ -66,7 +70,7 @@ public:  // really private. Use `connect` and `call` instead
 
 /** Accept client connections, forking a thread for each one. Returns listener thread, which you may terminate to stop listening. The thread executes the given respond function on each request and send its response back to the client. The client connection is expected to send Requests and wait for Responses (see `call`). */
 template <class Request, class Response> boost::shared_ptr<boost::thread> listen (Port <Request, Response> port, boost::function1 <Response, Request> respond) {
-	return message::listen (port.port, boost::bind (_call::respondLoop<Request,Response>, respond, _1));
+	return message::listen (port.port, boost::bind (_call::acceptClient <Request, Response>, respond, _1));
 }
 template <class Request, class Response> boost::shared_ptr<boost::thread> listen (Port <Request, Response> port, Response (*respond) (Request)) {
 	boost::function1 <Response, Request> f = respond;
@@ -75,11 +79,12 @@ template <class Request, class Response> boost::shared_ptr<boost::thread> listen
 
 /** Client - Connect to the designate server. You can then `send` and `receive` messages over this socket */
 template <class Request, class Response> Socket <Request, Response> connect (std::string hostname, Port <Request, Response> port) {
-	message::Socket sock = message::connect (hostname, port.port);
+	message::Socket sock = message::connect (HostPort (hostname, port.port));
 	return Socket <Request, Response> (sock);
 }
 
 /** Send message and wait for response. Thread-safe. */
+// TODO: timeout and raise Exception after N seconds (and close connection)
 template <class Request, class Response> Response call (const Socket <Request, Response> & socket, Request request) {
 	var::Access <message::Socket> sock (*socket.xsock);
 	message::send (*sock, request);

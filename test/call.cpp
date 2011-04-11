@@ -1,6 +1,6 @@
 /* Echo client and server */
 /* Assumes util and remote library has been built and installed in /usr/local/include and /usr/local/lib.
- * Compile as: g++ call.cpp -o call -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util
+ * Compile as: g++ call.cpp -o call -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -lremote
  * Run as: `call server <port>` and `call client <hostname> <port> <message>` */
 
 #include <iostream>
@@ -26,7 +26,7 @@ void mainServer (unsigned short localPort) {
 	t->join();  // wait forever
 }
 
-static string usage = "Try `echo server <port>` or `echo client <hostname> <port> <message>`";
+static string usage = "Try `call server <port>` or `call client <hostname> <port> <message>`";
 
 int main (int argc, const char* argv[]) {
 	if (argc == 3 && string(argv[1]) == "server")

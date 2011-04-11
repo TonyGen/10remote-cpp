@@ -1,6 +1,6 @@
 /* Echo client and server */
 /* Assumes util and remote library has been built and installed in /usr/local/include and /usr/local/lib.
- * Compile as: g++ message.cpp -o message -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util
+ * Compile as: g++ message.cpp -o message -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -lremote
  * Run as: `message server <port>` and `message client <hostname> <port> <message>` */
 
 #include <iostream>
@@ -8,7 +8,7 @@
 #include <remote/message.h>
 
 void mainClient (std::string serverHost, unsigned short serverPort, std::string message) {
-	message::Socket sock = message::connect (serverHost, serverPort);
+	message::Socket sock = message::connect (HostPort (serverHost, serverPort));
 	message::send (sock, message);
 	std::string reply = message::receive <std::string> (sock);
 	std::cout << reply << std::endl;
@@ -26,7 +26,7 @@ void mainServer (unsigned short localPort) {
 	t->join();  // wait forever
 }
 
-static std::string usage = "Try `echo server <port>` or `echo client <hostname> <port> <message>`";
+static std::string usage = "Try `message server <port>` or `message client <hostname> <port> <message>`";
 
 int main (int argc, const char* argv[]) {
 	if (argc == 3 && std::string(argv[1]) == "server")
