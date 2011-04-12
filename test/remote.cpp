@@ -29,7 +29,7 @@ void mainServer (unsigned short localPort) {
 	t->join();  // wait forever
 }
 
-static string usage = "Try `echo server <port>` or `echo client <hostname>:<port> <message>`";
+static string usage = "Try `remote server <port>` or `remote client <hostname>:<port> <message>`";
 
 int main (int argc, const char* argv[]) {
 	if (argc == 3 && string(argv[1]) == "server")

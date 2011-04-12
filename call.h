@@ -14,7 +14,7 @@ class RemoteException : public std::exception {
 public:
 	std::string errorType;  // typically type name
 	std::string errorMessage;
-	RemoteException (const std::exception& e)
+	RemoteException (const std::exception &e)
 		: errorType (typeid(e).name()), errorMessage (std::string (e.what())) {}
 	RemoteException () {}  // for serialization
 	~RemoteException () throw () {}
@@ -63,8 +63,8 @@ public:
 /** Connection to server that is thread-safe and has Request and Response type associated with it for type safety */
 template <class Request, class Response> class Socket {
 public:  // really private. Use `connect` and `call` instead
-	boost::shared_ptr <var::MVar <message::Socket> > xsock;  // exclusive access for thread-safety
-	Socket (message::Socket sock) : xsock (new var::MVar <message::Socket> (sock)) {}
+	MVAR (message::Socket) xsock;  // exclusive access for thread-safety
+	Socket (message::Socket sock) : xsock (new var::MVar_ <message::Socket> (sock)) {}
 	Socket () {}  // empty socket, expected to be assigned to
 };
 

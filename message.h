@@ -19,6 +19,7 @@ struct HostPort {
 	std::string host;
 	unsigned short port;
 	HostPort (std::string host, unsigned short port) : host(host), port(port) {}
+	HostPort () {} // for serialization
 	std::string toString () {return host + ":" + to_string(port);}
 };
 
@@ -102,9 +103,9 @@ namespace message {
 template <class A> A receive (Socket socket) {
 	boost::array<unsigned char,_message::IntAsBytesLength> bytes;
 	int n = read (socket->sock, bytes.c_array(), _message::IntAsBytesLength);
+	if (n == 0) throw std::runtime_error ("End of file");
 	if (n != _message::IntAsBytesLength) throw std::runtime_error ("Socket error reading message size, n = " + to_string(n));
 	unsigned int len = _message::bytesAsInt (bytes);
-	std::cout << len << std::endl;
 	char* data = new char[len];
 	n = read (socket->sock, data, len);
 	if (n != len) throw std::runtime_error ("Socket error reading message. Only read " + to_string(n) + " of " + to_string(len) + " bytes.");
@@ -118,5 +119,17 @@ template <class A> A receive (Socket socket) {
 }
 
 }
+
+/* Serialization */
+
+namespace boost {
+namespace serialization {
+
+template <class Archive> void serialize (Archive & ar, HostPort &x, const unsigned version) {
+	ar & x.host;
+	ar & x.port;
+}
+
+}}
 
 #endif /* MESSAGE_H_ */
