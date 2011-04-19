@@ -1,7 +1,7 @@
 /* Echo client and server */
 /* Assumes util and remote library has been built and installed in /usr/local/include and /usr/local/lib.
  * Compile as: g++ remote.cpp -o remote -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -ljob -lremote
- * Run as: `remote server <port>` and `remote client <hostname> <port> <message>` */
+ * Run as: `remote server <port>` and `remote client <hostname> <port>` */
 
 #include <iostream>
 #include <utility>
@@ -15,11 +15,17 @@ static string echo (string req) {
 	return req;
 }
 
-void mainClient (remote::Host server, string message) {
-	pair <string, unsigned short> x = remote::hostnameAndPort (server);
-	cout << "connect to " << x.first << ":" << x.second << endl;
-	string reply = remote::remotely (server, PROCEDURE (echo) (message));
-	cout << reply << endl;
+void mainClient (remote::Host server) {
+	string line;
+	while (getline (cin, line)) {
+		try {
+			cout << "connect to " << remote::hostPort (server) << endl;
+			string reply = remote::remotely (server, PROCEDURE (echo) (line));
+			cout << reply << endl;
+		} catch (std::exception &e) {
+			cerr << e.what() << endl;
+		}
+	}
 }
 
 void mainServer (unsigned short localPort) {
@@ -29,12 +35,12 @@ void mainServer (unsigned short localPort) {
 	t->join();  // wait forever
 }
 
-static string usage = "Try `remote server <port>` or `remote client <hostname>:<port> <message>`";
+static string usage = "Try `remote server <port>` or `remote client <hostname>:<port>`";
 
 int main (int argc, const char* argv[]) {
 	if (argc == 3 && string(argv[1]) == "server")
 		mainServer (parse_string<unsigned short> (argv[2]));
-	else if (argc == 4 && string(argv[1]) == "client")
-		mainClient (argv[2], argv[3]);
+	else if (argc == 3 && string(argv[1]) == "client")
+		mainClient (argv[2]);
 	else cerr << usage << endl;
 }

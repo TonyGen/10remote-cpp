@@ -11,24 +11,17 @@
 #include "call.h"
 
 namespace remote {
+
 	/** "Hostname:Port" or "Hostname" which will use default port */
 	typedef std::string Host;
 
 	/** Extract hostname and port from "Hostname:Port", or "Hostname" which uses default port */
-	std::pair <std::string, unsigned short> hostnameAndPort (Host);
-}
+	network::HostPort hostPort (Host);
 
-namespace _remote {  // private namespace
-	/** One connection per host. Return host's connection or create new one if not created yet. */
-	call::Socket <Closure, std::string> connection (remote::Host);
+	const network::Port DefaultPort = 6968;
 
 	/** Port we are listening on. Set by `listen` */
-	extern unsigned short ListenPort;
-}
-
-namespace remote {
-
-	extern unsigned short DefaultPort;
+	extern network::Port ListenPort;
 
 	/** Start thread that will accept `remotely` requests from network.
 	 * This must be started on every machine in the network */
@@ -36,13 +29,11 @@ namespace remote {
 
 	/** Execute action on given host, wait for its completion, and return its result */
 	template <class O> O remotely (Host host, Thunk<O> action) {
-		// if (host == "localhost" || host == "127.0.0.1") return action ();
-		call::Socket <Closure, std::string> sock = _remote::connection (host);
-		std::string reply = call::call (sock, action.closure);
+		std::string reply = call::call <Closure, std::string> (hostPort (host), action.closure);
 		return deserialized<O> (reply);
 	}
 
-	/** Return public hostname of localhost with port we are listening on */
+	/** Return public hostname of this machine with port we are listening on */
 	Host thisHost ();
 
 	/*** Remote Ref ***/
