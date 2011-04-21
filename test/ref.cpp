@@ -47,6 +47,7 @@ void mainClient (remote::Host server) {
 void mainServer (unsigned short localPort) {
 	registerFun (FUN(newResource));
 	registerFunF (FUN(setValue));
+	registerFun (FUNT(_remoteref::applyDeref,string,Resource));
 	remote::registerRefProcedures<Resource>();
 	cout << "listen on " << localPort << endl;
 	boost::shared_ptr <boost::thread> t = remote::listen (localPort);

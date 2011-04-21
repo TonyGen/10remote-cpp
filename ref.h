@@ -86,12 +86,11 @@ template <class T, class O> O remote (Ref<T> ref, Thunk< boost::function1< O, bo
 	return remote::remotely (ref.ref_->host, thunk (FUNT(_remoteref::applyDeref,O,T), action, ref.ref_->localRef));
 }
 
-/** Init server to export remote objects of type T */
+/** Register functions that support remote objects of type T.
+ * Also need to register _remoteref::applyDeref<O,T> */
 template <class T> void registerRefProcedures () {
 	registerFun (FUNT(_remoteref::incrementRef,T));
 	registerFun (FUNT(_remoteref::decrementRef,T));
-	//registerFun (FUNT(_remoteref::applyDeref,O,T));
-	registerFun (FUNT(remote::makeRef,T));
 }
 
 }
