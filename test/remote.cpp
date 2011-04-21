@@ -20,7 +20,7 @@ void mainClient (remote::Host server) {
 	while (getline (cin, line)) {
 		try {
 			cout << "connect to " << remote::hostPort (server) << endl;
-			string reply = remote::remotely (server, PROCEDURE (echo) (line));
+			string reply = remote::remotely (server, closure (FUN(echo), line));
 			cout << reply << endl;
 		} catch (std::exception &e) {
 			cerr << e.what() << endl;
@@ -29,7 +29,7 @@ void mainClient (remote::Host server) {
 }
 
 void mainServer (unsigned short localPort) {
-	REGISTER_PROCEDURE (echo);
+	registerFun (FUN(echo));
 	cout << "listen on " << localPort << endl;
 	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
 	t->join();  // wait forever

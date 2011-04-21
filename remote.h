@@ -6,8 +6,7 @@
 #include <vector>
 #include <utility>
 #include <10util/util.h>  // Unit
-#include "procedure.h"
-#include "registrar.h"
+#include "closure.h"
 #include "call.h"
 
 namespace remote {
@@ -28,32 +27,13 @@ namespace remote {
 	boost::shared_ptr <boost::thread> listen (unsigned short port = DefaultPort);
 
 	/** Execute action on given host, wait for its completion, and return its result */
-	template <class O> O remotely (Host host, Thunk<O> action) {
-		std::string reply = call::call <Closure, std::string> (hostPort (host), action.closure);
-		return deserialized<O> (reply);
+	template <class O> O remotely (Host host, Closure<O> action) {
+		std::string reply = call::call <ClosureSerialOut, std::string> (hostPort (host), ClosureSerialOut (action));
+		return io::deserialized<O> (reply);
 	}
 
 	/** Return public hostname of this machine with port we are listening on */
 	Host thisHost ();
-
-	/*** Remote Ref ***/
-
-	/** Reference to an object of type T on a host */
-	template <class T> struct Remote {
-		Host host;  // Home of reference object. Not checked, lookup will simply fail if id not found
-		registrar::Ref<T> ref;
-		Remote (Host host, registrar::Ref<T> ref) : host(host), ref(ref) {}
-		Remote () {}  // for serialization
-	};
-
-	template <class T> Remote<T> makeRemote (Host host, registrar::Ref<T> ref) {
-		return Remote<T> (host, ref);
-	}
-
-	/** Apply action to remote object */
-	template <class I, class O> O remote (Remote<I> remote, Fun< Thunk<O>, registrar::Ref<I> > action) {
-		return remotely (remote.host, action (remote.ref));
-	}
 
 }
 
@@ -66,11 +46,6 @@ namespace boost {
 namespace serialization {
 
 template <class Archive> void serialize (Archive & ar, Unit & x, const unsigned version) {}
-
-template <class Archive, class T> void serialize (Archive & ar, remote::Remote<T> & x, const unsigned version) {
-	ar & x.host;
-	ar & x.ref;
-}
 
 }}
 

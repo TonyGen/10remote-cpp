@@ -19,7 +19,7 @@ remote::Host remote::thisHost () {
 	return network::MyHostname + ":" + to_string (ListenPort);
 }
 
-static std::string reply (Closure action) {
+static std::string reply (ClosureSerialOut action) {
 	return action ();
 }
 
