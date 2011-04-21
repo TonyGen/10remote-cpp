@@ -32,11 +32,11 @@ static remote::Ref<Resource> newResource () {
 
 void mainClient (remote::Host server) {
 	cout << "connect to " << remote::hostPort (server) << endl;
-	remote::Ref<Resource> ref = remote::remotely (server, closure (FUN(newResource)));
+	remote::Ref<Resource> ref = remote::remotely (server, thunk (FUN(newResource)));
 	string line;
 	while (getline (cin, line)) {
 		try {
-			string reply = remote::remote (ref, closure (FUN(setValue), line));
+			string reply = remote::remote (ref, thunk (FUN(setValue), line));
 			cout << reply << endl;
 		} catch (std::exception &e) {
 			cerr << e.what() << endl;
@@ -46,7 +46,7 @@ void mainClient (remote::Host server) {
 
 void mainServer (unsigned short localPort) {
 	registerFun (FUN(newResource));
-	registerFun (FUN(setValue));
+	registerFunF (FUN(setValue));
 	remote::registerRefProcedures<Resource>();
 	cout << "listen on " << localPort << endl;
 	boost::shared_ptr <boost::thread> t = remote::listen (localPort);

@@ -6,6 +6,7 @@
 
 #include <10util/registrar.h>
 #include <boost/serialization/split_free.hpp>
+#include <10util/unit.h>
 
 namespace _remoteref { // private namespace
 
@@ -24,6 +25,7 @@ template <class T> struct Record {
 
 template <class T> Unit incrementRef (registrar::Ref< Record<T> > localRef) {
 	localRef->adjustRefCount (1);
+	return unit;
 }
 
 /** Remove ref after 15 secs if not changed */
@@ -37,6 +39,7 @@ template <class T> Unit decrementRef (registrar::Ref< Record<T> > localRef) {
 	if (verCount.second <= 0)
 		boost::thread (removeRefSoon<T>, localRef, verCount.first);
 		// Don't remove right away in case a remote::Ref is in transit after the original is destroyed
+	return unit;
 }
 
 /** While this object exists, the ref count on the host is +1 */
@@ -48,16 +51,17 @@ public:
 		host (remote::thisHost()),
 		localRef (registrar::add (boost::shared_ptr< Record<T> > (new Record<T> (1, object)))) {}
 	Ref_ (remote::Host host, registrar::Ref< Record<T> > localRef) : host(host), localRef(localRef) {
-		remote::remotely (host, closure (FUNT(_remoteref::incrementRef,T), localRef));
+		remote::remotely (host, thunk (FUNT(_remoteref::incrementRef,T), localRef));
 	}
 	~Ref_ () {
-		remote::remotely (host, closure (FUNT(_remoteref::decrementRef,T), localRef));
+		remote::remotely (host, thunk (FUNT(_remoteref::decrementRef,T), localRef));
 	}
 };
 
 /** This function must be registered on server */
-template <class T> boost::shared_ptr<T> deref (registrar::Ref< Record<T> > localRef) {
-	return localRef->object;
+template <class O, class T> O applyDeref (Thunk< boost::function1< O, boost::shared_ptr<T> > > action, registrar::Ref< Record<T> > localRef) {
+	boost::shared_ptr<T> p = localRef->object;
+	return action() (p);
 }
 
 }
@@ -77,16 +81,16 @@ template <class T> Ref<T> makeRef (boost::shared_ptr<T> object) {
 	return Ref<T> (object);
 }
 
-/** Apply action to remote object. `_remoteref::deref<T>` must be REGISTERED on server */
-template <class T, class O> O remote (Ref<T> ref, Closure< boost::function1< O, boost::shared_ptr<T> > > action) {
-	return remote::remotely (ref.ref_->host, action <<= closure (FUNT(_remoteref::deref,T), ref.ref_->localRef));
+/** Apply action to remote object. `_remoteref::applyDeref<O,T>` must be REGISTERED on server */
+template <class T, class O> O remote (Ref<T> ref, Thunk< boost::function1< O, boost::shared_ptr<T> > > action) {
+	return remote::remotely (ref.ref_->host, thunk (FUNT(_remoteref::applyDeref,O,T), action, ref.ref_->localRef));
 }
 
 /** Init server to export remote objects of type T */
 template <class T> void registerRefProcedures () {
 	registerFun (FUNT(_remoteref::incrementRef,T));
 	registerFun (FUNT(_remoteref::decrementRef,T));
-	registerFun (FUNT(_remoteref::deref,T));
+	//registerFun (FUNT(_remoteref::applyDeref,O,T));
 	registerFun (FUNT(remote::makeRef,T));
 }
 

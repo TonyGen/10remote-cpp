@@ -6,7 +6,7 @@
 #include <vector>
 #include <utility>
 #include <10util/util.h>  // Unit
-#include "closure.h"
+#include "thunk.h"
 #include "call.h"
 
 namespace remote {
@@ -27,8 +27,8 @@ namespace remote {
 	boost::shared_ptr <boost::thread> listen (unsigned short port = DefaultPort);
 
 	/** Execute action on given host, wait for its completion, and return its result */
-	template <class O> O remotely (Host host, Closure<O> action) {
-		std::string reply = call::call <ClosureSerialOut, std::string> (hostPort (host), ClosureSerialOut (action));
+	template <class O> O remotely (Host host, Thunk<O> action) {
+		std::string reply = call::call <ThunkSerialOut, std::string> (hostPort (host), ThunkSerialOut (action));
 		return io::deserialized<O> (reply);
 	}
 

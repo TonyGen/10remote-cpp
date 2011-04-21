@@ -20,7 +20,7 @@ void mainClient (remote::Host server) {
 	while (getline (cin, line)) {
 		try {
 			cout << "connect to " << remote::hostPort (server) << endl;
-			string reply = remote::remotely (server, closure (FUN(echo), line));
+			string reply = remote::remotely (server, thunk (FUN(echo), line));
 			cout << reply << endl;
 		} catch (std::exception &e) {
 			cerr << e.what() << endl;
