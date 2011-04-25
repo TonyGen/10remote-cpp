@@ -18,7 +18,7 @@ namespace rthread {
 	typedef remote::Ref<boost::thread> Thread;
 
 	/** Fork thread on host to execute action */
-	Thread fork (remote::Host host, Thunk<Unit> action);
+	Thread fork (remote::Host host, Thunk<void> action);
 
 	/** Wait for thread to complete */
 	void join (Thread);

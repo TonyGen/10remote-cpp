@@ -36,12 +36,14 @@ template <class Request, class Response> struct Req {
 	registrar::Ref< var::MVar_< boost::variant <call::Exception, Response> > > continuation;
 	Request request;
 	Req (registrar::Ref< var::MVar_< boost::variant <call::Exception, Response> > > continuation, Request request) : continuation(continuation), request(request) {}
+	Req () {}
 };
 
 template <class Response> struct Reply {
 	registrar::Ref< var::MVar_< boost::variant <call::Exception, Response> > > continuation;
 	boost::variant <call::Exception, Response> response;
 	Reply (registrar::Ref< var::MVar_< boost::variant <call::Exception, Response> > > continuation, boost::variant <call::Exception, Response> response) : continuation(continuation), response(response) {}
+	Reply () {}
 };
 
 template <class Request, class Response> void requestHandler (boost::function1 <Response, Request> respond, MVAR (io::Sink< Reply<Response> >) pipe, Req<Request,Response> req) {
@@ -56,11 +58,12 @@ template <class Request, class Response> void requestHandler (boost::function1 <
 template <class Request, class Response> void serverRespondLoop (boost::function1 <Response, Request> respond, io::IOStream sock) {
 	try {
 		io::SourceSink< Req<Request,Response>, Reply<Response> > ss (sock);
-		MVAR (io::Sink< Reply<Request> >) pipe (new var::MVar_< io::Sink< Reply<Request> > > (ss.sink));
+		MVAR (io::Sink< Reply<Response> >) pipe = var::newMVar (ss.sink);
 		for (;;) {
 			Req<Request,Response> req;
 			ss.source >> req;
-			thread::fork (boost::bind (requestHandler<Request,Response>, respond, pipe, req));
+			boost::function0<void> f = boost::bind (requestHandler<Request,Response>, respond, pipe, req);
+			thread::fork (f);
 		}
 	} catch (std::exception &e) {
 		// stop looping on connection close or error (and print to stderr if error)
@@ -89,8 +92,9 @@ template <class Request, class Response> struct Connection {
 	~Connection () {receiver->interrupt();}
 	Connection (io::IOStream io) {
 		io::SourceSink< Reply<Response>, Req<Request,Response> > ss (io);
-		sender.reset (new var::MVar_< io::Sink< Req<Request,Response> > > (ss.sink));
-		receiver.reset (thread::fork (boost::bind (clientResponseLoop<Request,Response>, ss.source)));
+		sender = var::newMVar (ss.sink);
+		boost::function0<void> f = boost::bind (clientResponseLoop<Request,Response>, ss.source);
+		receiver = thread::fork (f);
 	}
 };
 
@@ -101,12 +105,12 @@ template <class Request, class Response> boost::shared_ptr< Connection<Request,R
 	boost::shared_ptr<void> vconn = Connections [server];
 	if (vconn) {
 		boost::shared_ptr< Connection<Request,Response> > conn = boost::static_pointer_cast< Connection<Request,Response> > (vconn);
-		io::Sink<Request> sock = conn->sender->read();
+		io::Sink< Req<Request,Response> > sock = conn->sender->read();
 		if (sock.out->good()) return conn;
 	}
 	io::IOStream io = network::connect (server);
 	boost::shared_ptr< Connection<Request,Response> > conn (new Connection<Request,Response> (io));
-	vconn.reset (boost::static_pointer_cast <void, Connection<Request,Response> > (conn));
+	vconn = boost::static_pointer_cast <void, Connection<Request,Response> > (conn);
 	return conn;
 }
 
@@ -128,10 +132,10 @@ template <class Request, class Response> boost::shared_ptr<boost::thread> listen
 // TODO: timeout and raise Exception after N seconds (and close connection)
 template <class Request, class Response> Response call (network::HostPort host, Request request) {
 	boost::shared_ptr< _call::Connection<Request,Response> > conn = _call::connection <Request,Response> (host);
-	boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > cont (new var::MVar_< boost::variant <call::Exception, Response> > ());
+	boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > cont = var::newMVar< boost::variant <call::Exception, Response> > ();
 	{
 		var::Access< io::Sink< _call::Req<Request,Response> > > sink (*conn->sender);
-		*sink << Req (registrar::add (cont), request);
+		*sink << _call::Req<Request,Response> (registrar::add (cont), request);
 	}
 	boost::variant <call::Exception, Response> response = cont->take(); // TODO: timeout
 	if (Response* r = boost::get<Response> (&response)) return * r;
@@ -150,6 +154,16 @@ namespace serialization {
 template <class Archive> void serialize (Archive & ar, call::Exception & x, const unsigned version) {
 	ar & x.errorType;
 	ar & x.errorMessage;
+}
+
+template <class Archive, class Request, class Response> void serialize (Archive &ar, _call::Req<Request,Response> &x, const unsigned version) {
+	ar & x.continuation;
+	ar & x.request;
+}
+
+template <class Archive, class Response> void serialize (Archive &ar, _call::Reply<Response> &x, const unsigned version) {
+	ar & x.continuation;
+	ar & x.response;
 }
 
 }}

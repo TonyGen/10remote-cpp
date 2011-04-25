@@ -6,7 +6,7 @@
 #include <10util/thread.h>
 
 /** Fork thread on host to execute action. */
-rthread::Thread rthread::fork (remote::Host host, Thunk<Unit> action) {
+rthread::Thread rthread::fork (remote::Host host, Thunk<void> action) {
 	return remote::eval_ (host, thunk (FUNT(thread::fork,Thunk), action));
 }
 
@@ -25,10 +25,10 @@ static boost::function1 <Unit, thread::Thread> applyJoin () {return boost::bind 
 /** Wait for thread to complete */
 void rthread::join (Thread t) {remote::apply (thunk(FUN(applyJoin)), t);}
 
-/** Parallel threads and error holder */
+/** Parallel threads and error holder *
 typedef std::pair< MVAR(std::vector<rthread::Thread>), boost::shared_ptr< boost::shared_ptr <rthread::FailedThread> > > ParMain;
 
-/** Called when one of the parallel threads fails. Terminate remaining threads and set evar */
+/** Called when one of the parallel threads fails. Terminate remaining threads and set evar *
 static Unit parallelError (rthread::FailedThread failedThread, registrar::Ref<ParMain> ref) {
 	boost::shared_ptr<ParMain> p = ref.deref();
 	p->second->reset (new rthread::FailedThread (failedThread));
@@ -39,7 +39,7 @@ static Unit parallelError (rthread::FailedThread failedThread, registrar::Ref<Pa
 	return unit;
 }
 
-/** Run action locally and notify remote main 'parallel' thread if this local thread fails */
+/** Run action locally and notify remote main 'parallel' thread if this local thread fails *
 static Unit runLocalParallelThread (remote::Remote<ParMain> main, Thunk<Unit> action) {
 	try {
 		action();
@@ -50,7 +50,7 @@ static Unit runLocalParallelThread (remote::Remote<ParMain> main, Thunk<Unit> ac
 	return unit;
 }
 
-/** Fork actions on associated hosts; wait for control actions to finish then terminate continuous actions. If one action fails then terminate all other actions and rethrow failure in main thread */
+/** Fork actions on associated hosts; wait for control actions to finish then terminate continuous actions. If one action fails then terminate all other actions and rethrow failure in main thread *
 void rthread::parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > controlActions, std::vector< std::pair< remote::Host, Thunk<Unit> > > continuousActions) {
 	// wrap threads in MVar so all threads are added before anyone fails and terminates them all, otherwise later ones would not be terminated because they started after failure.
 	std::vector<Thread> _threads;
@@ -81,13 +81,13 @@ void rthread::parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > co
 		}
 		throw;
 	}
-}
+}*/
 
 void rthread::registerProcedures () {
 	remote::registerRefProcedures<boost::thread>();
 	registerFunF (FUNT(thread::fork,Thunk));
 	registerFunF (FUN(applyInterrupt));
 	registerFunF (FUN(applyJoin));
-	registerFun (FUN(runLocalParallelThread));
+	//registerFun (FUN(runLocalParallelThread));
 	//REGISTER_PROCEDURE (parallelError);
 }
