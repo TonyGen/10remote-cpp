@@ -1,7 +1,7 @@
 /* Echo client and server */
 /* Assumes util and remote library has been built and installed in /usr/local/include and /usr/local/lib.
- * Compile as: g++ remote.cpp -o remote -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -ljob -lremote
- * Run as: `remote server <port>` and `remote client <hostname> <port>` */
+ * Compile as: g++ remote.cpp -o remote -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -lremote
+ * Run as: `remote server <port>` and `remote client <hostname>:<port>` */
 
 #include <iostream>
 #include <utility>
