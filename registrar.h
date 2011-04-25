@@ -32,8 +32,11 @@ namespace registrar {
 		T& operator* () {
 			return *deref();
 		}
-		void remove() {
+		boost::shared_ptr<T> remove() {
+			// TODO: speed up using find and iterator remove
+			boost::shared_ptr<T> obj = deref();
 			Registry [typeid(T).name()] .erase (id);
+			return obj;
 		}
 	};
 

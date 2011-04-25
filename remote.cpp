@@ -23,7 +23,7 @@ static std::string reply (ThunkSerialOut action) {
 	return action ();
 }
 
-/** Start thread that will accept `remotely` requests from network.
+/** Start thread that will accept `remote::eval` requests from the network.
  * This must be started on every machine in the network */
 boost::shared_ptr <boost::thread> remote::listen (network::Port port) {
 	ListenPort = port;

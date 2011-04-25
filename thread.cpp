@@ -25,10 +25,10 @@ static boost::function1 <Unit, thread::Thread> applyJoin () {return boost::bind 
 /** Wait for thread to complete */
 void rthread::join (Thread t) {remote::apply (thunk(FUN(applyJoin)), t);}
 
-/** Parallel threads and error holder *
-typedef std::pair< var::MVar< std::vector<rthread::Thread> >, boost::shared_ptr< boost::shared_ptr <rthread::FailedThread> > > ParMain;
+/** Parallel threads and error holder */
+typedef std::pair< MVAR(std::vector<rthread::Thread>), boost::shared_ptr< boost::shared_ptr <rthread::FailedThread> > > ParMain;
 
-/** Called when one of the parallel threads fails. Terminate remaining threads and set evar *
+/** Called when one of the parallel threads fails. Terminate remaining threads and set evar */
 static Unit parallelError (rthread::FailedThread failedThread, registrar::Ref<ParMain> ref) {
 	boost::shared_ptr<ParMain> p = ref.deref();
 	p->second->reset (new rthread::FailedThread (failedThread));
@@ -39,7 +39,7 @@ static Unit parallelError (rthread::FailedThread failedThread, registrar::Ref<Pa
 	return unit;
 }
 
-/** Run action locally and notify remote main 'parallel' thread if this local thread fails *
+/** Run action locally and notify remote main 'parallel' thread if this local thread fails */
 static Unit runLocalParallelThread (remote::Remote<ParMain> main, Thunk<Unit> action) {
 	try {
 		action();
@@ -50,22 +50,22 @@ static Unit runLocalParallelThread (remote::Remote<ParMain> main, Thunk<Unit> ac
 	return unit;
 }
 
-/** Fork actions on associated hosts and wait for control actions to finish then terminate continuous actions. If one action fails then terminate all actions and rethrow failure in main thread *
+/** Fork actions on associated hosts; wait for control actions to finish then terminate continuous actions. If one action fails then terminate all other actions and rethrow failure in main thread */
 void rthread::parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > controlActions, std::vector< std::pair< remote::Host, Thunk<Unit> > > continuousActions) {
 	// wrap threads in MVar so all threads are added before anyone fails and terminates them all, otherwise later ones would not be terminated because they started after failure.
 	std::vector<Thread> _threads;
-	var::MVar< std::vector<Thread> > vThreads (new var::MVar_< std::vector<Thread> > (std::vector<Thread>()));
+	MVAR(std::vector<Thread>) vThreads (new var::MVar_< std::vector<Thread> > (std::vector<Thread>()));
 	boost::shared_ptr< boost::shared_ptr<FailedThread> > evar (new boost::shared_ptr<FailedThread>());
 	boost::shared_ptr<ParMain> p (new ParMain (vThreads, evar));
-	remote::Remote<ParMain> rem (remote::thisHost(), registrar::add (p));
+	remote::Ref<ParMain> rem (p);
 	try {
 		{
 			var::Access< std::vector<Thread> > threads (*vThreads);
 			for (unsigned i = 0; i < controlActions.size(); i++) {
-				threads->push_back (fork (controlActions[i].first, PROCEDURE(runLocalParallelThread) (rem) (controlActions[i].second)));
+				threads->push_back (fork (controlActions[i].first, thunk (FUN(runLocalParallelThread), rem, controlActions[i].second)));
 			}
 			for (unsigned i = 0; i < continuousActions.size(); i++) {
-				threads->push_back (fork (continuousActions[i].first, PROCEDURE(runLocalParallelThread) (rem) (continuousActions[i].second)));
+				threads->push_back (fork (continuousActions[i].first, thunk (FUN(runLocalParallelThread), rem, continuousActions[i].second)));
 			}
 		}
 		std::vector<Thread> threads = vThreads->read();
@@ -81,13 +81,13 @@ void rthread::parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > co
 		}
 		throw;
 	}
-}*/
+}
 
 void rthread::registerProcedures () {
 	remote::registerRefProcedures<boost::thread>();
 	registerFunF (FUNT(thread::fork,Thunk));
 	registerFunF (FUN(applyInterrupt));
 	registerFunF (FUN(applyJoin));
-	//REGISTER_PROCEDURE (runLocalParallelThread);
+	registerFun (FUN(runLocalParallelThread));
 	//REGISTER_PROCEDURE (parallelError);
 }
