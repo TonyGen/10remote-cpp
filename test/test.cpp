@@ -4,7 +4,7 @@
 
 #include <iostream>
 #include <10util/util.h>
-#include <remote/procedure.h>
+#include <remote/thunk.h>
 
 using namespace std;
 
@@ -12,8 +12,8 @@ static int hello (string arg) {return 1;}
 static Unit goodbye (unsigned arg, string arg2) {return unit;}
 
 int main (int argc, const char* argv[]) {
-	Fun <Thunk<int>, string> x = PROCEDURE (hello);
-	cout << x.closure.funId << endl;
-	Fun2 (Thunk<Unit>, unsigned, string) y = PROCEDURE (goodbye);
-	cout << y.closure.funId << endl;
+	Thunk<int> x = thunk (FUN(hello), string("world"));
+	cout << x.funKey << endl;
+	Thunk<Unit> y = thunk (FUN(goodbye), (unsigned)1, string("world"));
+	cout << y.funKey << endl;
 }

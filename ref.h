@@ -4,9 +4,11 @@
 #ifndef REMOTE_REF_H_
 #define REMOTE_REF_H_
 
-#include <10util/registrar.h>
 #include <boost/serialization/split_free.hpp>
+#include <boost/functional/value_factory.hpp>
 #include <10util/unit.h>
+#include "registrar.h"
+#include "remote.h"
 
 namespace _remoteref { // private namespace
 
@@ -51,18 +53,14 @@ public:
 		host (remote::thisHost()),
 		localRef (registrar::add (boost::shared_ptr< Record<T> > (new Record<T> (1, object)))) {}
 	Ref_ (remote::Host host, registrar::Ref< Record<T> > localRef) : host(host), localRef(localRef) {
-		remote::remotely (host, thunk (FUNT(_remoteref::incrementRef,T), localRef));
+		remote::eval (host, thunk (FUNT(_remoteref::incrementRef,T), localRef));
 	}
 	~Ref_ () {
-		remote::remotely (host, thunk (FUNT(_remoteref::decrementRef,T), localRef));
+		remote::eval (host, thunk (FUNT(_remoteref::decrementRef,T), localRef));
 	}
 };
 
-/** This function must be registered on server */
-template <class O, class T> O applyDeref (Thunk< boost::function1< O, boost::shared_ptr<T> > > action, registrar::Ref< Record<T> > localRef) {
-	boost::shared_ptr<T> p = localRef->object;
-	return action() (p);
-}
+template <class T> boost::shared_ptr<T> deref (registrar::Ref< Record<T> > localRef) {return localRef->object;}
 
 }
 
@@ -77,13 +75,24 @@ public: // private to this file
 	Ref (boost::shared_ptr<T> object) : ref_ (boost::shared_ptr <_remoteref::Ref_<T> > (new _remoteref::Ref_<T> (object))) {}
 };
 
-template <class T> Ref<T> makeRef (boost::shared_ptr<T> object) {
-	return Ref<T> (object);
+template <class T> boost::function1< Ref<T>, boost::shared_ptr<T> > makeRef () {return boost::value_factory< Ref<T> >();}
+
+/** Same as `remote::eval` except return remote reference to result. `registerRefProcedures<O>` must be registered on server */
+template <class O> Ref<O> eval_ (Host host, Thunk< boost::shared_ptr<O> > action) {
+	Thunk< Ref<O> > actToRef = thunk (FUNT(composeAct0,Ref<O>,boost::shared_ptr<O>), thunk (FUNT(remote::makeRef,O)), action);
+	return eval (host, actToRef);
 }
 
-/** Apply action to remote object. `_remoteref::applyDeref<O,T>` must be REGISTERED on server */
-template <class T, class O> O remote (Ref<T> ref, Thunk< boost::function1< O, boost::shared_ptr<T> > > action) {
-	return remote::remotely (ref.ref_->host, thunk (FUNT(_remoteref::applyDeref,O,T), action, ref.ref_->localRef));
+/** Apply action to remote object. `registerApply<O,T>` must be REGISTERED on server */
+template <class O, class T> O apply (Thunk< boost::function1< O, boost::shared_ptr<T> > > action, Ref<T> ref) {
+	Thunk<O> act = thunk (FUNT(composeAct0,O,boost::shared_ptr<T>), action, thunk (FUNT(_remoteref::deref,T), ref.ref_->localRef));
+	return remote::eval (ref.ref_->host, act);
+}
+
+/** Same as `apply` except return remote reference to result. `registerApply<O,T>` must be REGISTERED on server */
+template <class O, class T> Ref<O> apply_ (Thunk< boost::function1< boost::shared_ptr<O>, boost::shared_ptr<T> > > action, Ref<T> ref) {
+	Thunk< boost::shared_ptr<O> > act = thunk (FUNT(composeAct0,boost::shared_ptr<O>,boost::shared_ptr<T>), action, thunk (FUNT(_remoteref::deref,T), ref.ref_->localRef));
+	return remote::eval_ (ref.ref_->host, act);
 }
 
 /** Register functions that support remote objects of type T.
@@ -91,6 +100,22 @@ template <class T, class O> O remote (Ref<T> ref, Thunk< boost::function1< O, bo
 template <class T> void registerRefProcedures () {
 	registerFun (FUNT(_remoteref::incrementRef,T));
 	registerFun (FUNT(_remoteref::decrementRef,T));
+	registerFunF (FUNT(remote::makeRef,T));
+	registerFunF (FUNT(_remoteref::deref,T));
+	registerFun (FUNT(composeAct0,Ref<T>,boost::shared_ptr<T>));
+}
+
+/** For every type of call to `apply`, receiving server must call this at startup */
+template <class O, class T> void registerApply () {
+	registerRefProcedures<T> ();
+	registerFun (FUNT(composeAct0,O,boost::shared_ptr<T>));
+}
+
+/** For every type of call to `apply_`, receiving server must call this at startup */
+template <class O, class T> void registerApply_ () {
+	registerRefProcedures<T>();
+	registerFunF (FUNT(composeAct0,boost::shared_ptr<O>,boost::shared_ptr<T>));
+	registerRefProcedures<O>();
 }
 
 }

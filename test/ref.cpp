@@ -27,16 +27,16 @@ static boost::function1< string, boost::shared_ptr<Resource> > setValue (string 
 }
 
 static remote::Ref<Resource> newResource () {
-	return remote::makeRef (boost::shared_ptr<Resource> (new Resource));
+	return remote::Ref<Resource> (boost::shared_ptr<Resource> (new Resource));
 }
 
 void mainClient (remote::Host server) {
 	cout << "connect to " << remote::hostPort (server) << endl;
-	remote::Ref<Resource> ref = remote::remotely (server, thunk (FUN(newResource)));
+	remote::Ref<Resource> ref = remote::eval (server, thunk (FUN(newResource)));
 	string line;
 	while (getline (cin, line)) {
 		try {
-			string reply = remote::remote (ref, thunk (FUN(setValue), line));
+			string reply = remote::apply (thunk (FUN(setValue), line), ref);
 			cout << reply << endl;
 		} catch (std::exception &e) {
 			cerr << e.what() << endl;
@@ -47,8 +47,7 @@ void mainClient (remote::Host server) {
 void mainServer (unsigned short localPort) {
 	registerFun (FUN(newResource));
 	registerFunF (FUN(setValue));
-	registerFun (FUNT(_remoteref::applyDeref,string,Resource));
-	remote::registerRefProcedures<Resource>();
+	remote::registerApply<string,Resource>();
 	cout << "listen on " << localPort << endl;
 	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
 	t->join();  // wait forever

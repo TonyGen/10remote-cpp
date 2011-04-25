@@ -27,7 +27,7 @@ namespace remote {
 	boost::shared_ptr <boost::thread> listen (unsigned short port = DefaultPort);
 
 	/** Execute action on given host, wait for its completion, and return its result */
-	template <class O> O remotely (Host host, Thunk<O> action) {
+	template <class O> O eval (Host host, Thunk<O> action) {
 		std::string reply = call::call <ThunkSerialOut, std::string> (hostPort (host), ThunkSerialOut (action));
 		return io::deserialized<O> (reply);
 	}
