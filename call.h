@@ -50,8 +50,12 @@ template <class Request, class Response> void requestHandler (boost::function1 <
 	// catch any exception in respond function and return it to remote caller to be raised there (see `call` below)
 	boost::variant <call::Exception, Response> response;
 	try {response = respond (req.request);} catch (std::exception &e) {response = call::Exception (e);}
-	var::Access< io::Sink< Reply<Response> > > sink (*pipe);
-	*sink << Reply<Response> (req.continuation, response);
+	try {
+		var::Access< io::Sink< Reply<Response> > > sink (*pipe);
+		*sink << Reply<Response> (req.continuation, response);
+	} catch (std::exception &e) {
+		std::cerr << "socket failed sending reply: (" << typeid(e).name() << ") " << e.what() << std::endl;
+	}
 }
 
 /** Fork a thread on each request received on the socket that apply respond function and send its result back to the client */
@@ -68,7 +72,7 @@ template <class Request, class Response> void serverRespondLoop (boost::function
 	} catch (std::exception &e) {
 		// stop looping on connection close or error (and print to stderr if error)
 		if (! sock->eof())
-			std::cerr << "call::respondLoop: (" << typeid(e).name() << ") " << e.what() << std::endl;
+			std::cerr << "call::serverRespondLoop: (" << typeid(e).name() << ") " << e.what() << std::endl;
 		// else std::cout << "client closed connection" << std::endl;
 	}
 }
@@ -78,19 +82,33 @@ template <class Request, class Response> void acceptClient (boost::function1 <Re
 }
 
 template <class Request, class Response> void clientResponseLoop (io::Source< Reply<Response> > source) {
-	while (true) {
+	try {
+	for (;;) {
 		Reply<Response> reply;
 		source >> reply;
 		boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > cont = reply.continuation.remove();
-		cont->put (reply.response);
+		if (cont) cont->put (reply.response);
+	}
+	} catch (boost::thread_interrupted &e) { // Client closing Connection_, do nothing
+	} catch (std::exception &e) {
+		std::cerr << "in call::clientResponseLoop, problem receiving reply: (" << typeid(e).name() << ") " << e.what() << std::endl;
 	}
 }
 
-template <class Request, class Response> struct Connection {
+class ConnectionBase_ {
+public:
+	virtual ~ConnectionBase_ () {};
+};
+
+template <class Request, class Response> class Connection_ : public ConnectionBase_ {
+public:
 	boost::shared_ptr< var::MVar_< io::Sink< Req<Request,Response> > > > sender;
 	thread::Thread receiver;
-	~Connection () {receiver->interrupt();}
-	Connection (io::IOStream io) {
+	~Connection_ () {
+	 COUT << "killing connection" << std::endl;
+		receiver->interrupt();}
+	Connection_ (io::IOStream io) {
+	 COUT << "creating connection" << std::endl;
 		io::SourceSink< Reply<Response>, Req<Request,Response> > ss (io);
 		sender = var::newMVar (ss.sink);
 		boost::function0<void> f = boost::bind (clientResponseLoop<Request,Response>, ss.source);
@@ -98,19 +116,22 @@ template <class Request, class Response> struct Connection {
 	}
 };
 
-extern std::map <network::HostPort, boost::shared_ptr<void> > Connections; // void is cast to Connection<Request,Response>
+extern std::map <network::HostPort, boost::shared_ptr<ConnectionBase_> > Connections;
+// ConnectionBase_ is cast to Connection_<Request,Response>
+// TODO: remove idle connections
 
 /** Return connection to server, creating one if necessary */
-template <class Request, class Response> boost::shared_ptr< Connection<Request,Response> > connection (network::HostPort server) {
-	boost::shared_ptr<void> vconn = Connections [server];
+template <class Request, class Response> boost::shared_ptr< Connection_<Request,Response> > connection (network::HostPort server) {
+	boost::shared_ptr<ConnectionBase_> vconn = Connections [server];
 	if (vconn) {
-		boost::shared_ptr< Connection<Request,Response> > conn = boost::static_pointer_cast< Connection<Request,Response> > (vconn);
+		boost::shared_ptr< Connection_<Request,Response> > conn = boost::static_pointer_cast< Connection_<Request,Response> > (vconn);
 		io::Sink< Req<Request,Response> > sock = conn->sender->read();
 		if (sock.out->good()) return conn;
+		COUT << "Bad connection to " << server << std::endl;
 	}
 	io::IOStream io = network::connect (server);
-	boost::shared_ptr< Connection<Request,Response> > conn (new Connection<Request,Response> (io));
-	vconn = boost::static_pointer_cast <void, Connection<Request,Response> > (conn);
+	boost::shared_ptr< Connection_<Request,Response> > conn (new Connection_<Request,Response> (io));
+	Connections [server] = boost::static_pointer_cast <ConnectionBase_> (conn);
 	return conn;
 }
 
@@ -131,7 +152,7 @@ template <class Request, class Response> boost::shared_ptr<boost::thread> listen
 /** Send message and wait for response. Thread-safe. */
 // TODO: timeout and raise Exception after N seconds (and close connection)
 template <class Request, class Response> Response call (network::HostPort host, Request request) {
-	boost::shared_ptr< _call::Connection<Request,Response> > conn = _call::connection <Request,Response> (host);
+	boost::shared_ptr< _call::Connection_<Request,Response> > conn = _call::connection <Request,Response> (host);
 	boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > cont = var::newMVar< boost::variant <call::Exception, Response> > ();
 	{
 		var::Access< io::Sink< _call::Req<Request,Response> > > sink (*conn->sender);

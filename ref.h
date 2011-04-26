@@ -56,7 +56,11 @@ public:
 		remote::eval (host, thunk (FUNT(_remoteref::incrementRef,T), localRef));
 	}
 	~Ref_ () {
-		remote::eval (host, thunk (FUNT(_remoteref::decrementRef,T), localRef));
+		try {
+			remote::eval (host, thunk (FUNT(_remoteref::decrementRef,T), localRef));
+		} catch (std::exception &e) {
+			std::cerr << "~Ref<" << typeid(T).name() << ">: (" << typeid(e).name() << ") " << e.what() << std::endl;
+		}
 	}
 };
 

@@ -12,10 +12,9 @@
 
 using namespace std;
 
-static Unit echo (int pause, string req) {
+static void echo (int pause, string req) {
 	boost::this_thread::sleep (boost::posix_time::seconds (pause));
 	cout << req << endl;
-	return unit;
 }
 
 void mainClient (remote::Host server, int pause) {
@@ -32,7 +31,7 @@ void mainClient (remote::Host server, int pause) {
 }
 
 void mainServer (unsigned short localPort) {
-	registerFun (FUN(echo));
+	registerFunF (FUN(echo));
 	rthread::registerProcedures();
 	cout << "listen on " << localPort << endl;
 	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
