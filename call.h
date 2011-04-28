@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "registrar.h"
 #include <10util/network.h>
 #include <10util/mvar.h>
 #include <10util/thread.h>
@@ -11,6 +10,7 @@
 #include <boost/smart_ptr.hpp>
 #include <boost/variant.hpp>
 #include <map>
+#include <ios>
 
 namespace call {
 
@@ -20,6 +20,7 @@ public:
 	std::string errorMessage;
 	Exception (const std::exception &e)
 		: errorType (typeid(e).name()), errorMessage (std::string (e.what())) {}
+	Exception (std::string message) : errorType (typeid(Exception).name()), errorMessage(message) {}
 	Exception () {}  // for serialization
 	~Exception () throw () {}
 	const char* what() const throw () {  // overriden
@@ -29,120 +30,136 @@ public:
 
 }
 
-/** Private */
-namespace _call {
+namespace _call { // private
 
-template <class Request, class Response> struct Req {
-	registrar::Ref< var::MVar_< boost::variant <call::Exception, Response> > > continuation;
+template <class Request> struct Req {
+	uintptr_t continueId;
 	Request request;
-	Req (registrar::Ref< var::MVar_< boost::variant <call::Exception, Response> > > continuation, Request request) : continuation(continuation), request(request) {}
+	Req (uintptr_t continueId, Request request) : continueId(continueId), request(request) {}
 	Req () {}
 };
 
 template <class Response> struct Reply {
-	registrar::Ref< var::MVar_< boost::variant <call::Exception, Response> > > continuation;
+	uintptr_t continueId;
 	boost::variant <call::Exception, Response> response;
-	Reply (registrar::Ref< var::MVar_< boost::variant <call::Exception, Response> > > continuation, boost::variant <call::Exception, Response> response) : continuation(continuation), response(response) {}
+	Reply (uintptr_t continueId, boost::variant <call::Exception, Response> response) : continueId(continueId), response(response) {}
 	Reply () {}
 };
 
-template <class Request, class Response> void requestHandler (boost::function1 <Response, Request> respond, MVAR (io::Sink< Reply<Response> >) pipe, Req<Request,Response> req) {
-	// catch any exception in respond function and return it to remote caller to be raised there (see `call` below)
-	boost::variant <call::Exception, Response> response;
-	try {response = respond (req.request);} catch (std::exception &e) {response = call::Exception (e);}
-	try {
-		var::Access< io::Sink< Reply<Response> > > sink (*pipe);
-		*sink << Reply<Response> (req.continuation, response);
-	} catch (std::exception &e) {
-		std::cerr << "socket failed sending reply: (" << typeid(e).name() << ") " << e.what() << std::endl;
-	}
-}
+namespace server { // private server
 
-/** Fork a thread on each request received on the socket that apply respond function and send its result back to the client */
-template <class Request, class Response> void serverRespondLoop (boost::function1 <Response, Request> respond, io::IOStream sock) {
-	try {
-		io::SourceSink< Req<Request,Response>, Reply<Response> > ss (sock);
-		MVAR (io::Sink< Reply<Response> >) pipe = var::newMVar (ss.sink);
-		for (;;) {
-			Req<Request,Response> req;
-			ss.source >> req;
-			boost::function0<void> f = boost::bind (requestHandler<Request,Response>, respond, pipe, req);
-			thread::fork (f);
+	template <class Request, class Response> void processRequest (boost::function1 <Response, Request> respond, MVAR (io::Sink< Reply<Response> >) out, Req<Request> req) {
+		// catch any exception in respond function and return it to remote caller to be raised there (see `call` below)
+		boost::variant <call::Exception, Response> response;
+		try {response = respond (req.request);} catch (std::exception &e) {response = call::Exception (e);}
+		try {
+			var::Access< io::Sink< Reply<Response> > > sink (*out);
+			*sink << Reply<Response> (req.continueId, response);
+		} catch (std::exception &e) {
+			if (! out->read().out->eof())
+				std::cerr << "socket failed sending reply: (" << typeid(e).name() << ") " << e.what() << std::endl;
+			// else client closed connection
 		}
-	} catch (std::exception &e) {
-		// stop looping on connection close or error (and print to stderr if error)
-		if (! sock->eof())
-			std::cerr << "call::serverRespondLoop: (" << typeid(e).name() << ") " << e.what() << std::endl;
-		// else std::cout << "client closed connection" << std::endl;
 	}
-}
 
-template <class Request, class Response> void acceptClient (boost::function1 <Response, Request> respond, io::IOStream sock) {
-	boost::thread _th (boost::bind (serverRespondLoop <Request, Response>, respond, sock));
-}
-
-template <class Request, class Response> void clientResponseLoop (io::Source< Reply<Response> > source) {
-	try {
-	for (;;) {
-		Reply<Response> reply;
-		source >> reply;
-		boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > cont = reply.continuation.remove();
-		if (cont) cont->put (reply.response);
+	/** Fork a thread on each request received on the socket that apply respond function and send its result back to the client */
+	template <class Request, class Response> void receiveRequests (boost::function1 <Response, Request> respond, io::IOStream sock) {
+		try {
+			io::SourceSink< Req<Request>, Reply<Response> > ss (sock);
+			MVAR (io::Sink< Reply<Response> >) out = var::newMVar (ss.sink);
+			while (true) {
+				Req<Request> req;
+				ss.source >> req;
+				boost::function0<void> f = boost::bind (processRequest <Request,Response>, respond, out, req);
+				thread::fork (f);
+			}
+		} catch (std::exception &e) {
+			// stop looping on connection close or error (and print to stderr if error)
+			if (! sock->eof())
+				std::cerr << "call::serverRespondLoop: (" << typeid(e).name() << ") " << e.what() << std::endl;
+			// else client closed connection
+		}
 	}
-	} catch (boost::thread_interrupted &e) { // Client closing Connection_, do nothing
-	} catch (std::exception &e) {
-		std::cerr << "in call::clientResponseLoop, problem receiving reply: (" << typeid(e).name() << ") " << e.what() << std::endl;
+
+	template <class Request, class Response> void acceptClient (boost::function1 <Response, Request> respond, io::IOStream sock) {
+		boost::thread _th (boost::bind (receiveRequests <Request, Response>, respond, sock));
 	}
-}
-
-class ConnectionBase_ {
-public:
-	virtual ~ConnectionBase_ () {};
-};
-
-template <class Request, class Response> class Connection_ : public ConnectionBase_ {
-public:
-	boost::shared_ptr< var::MVar_< io::Sink< Req<Request,Response> > > > sender;
-	thread::Thread receiver;
-	~Connection_ () {
-	 COUT << "killing connection" << std::endl;
-		receiver->interrupt();}
-	Connection_ (io::IOStream io) {
-	 COUT << "creating connection" << std::endl;
-		io::SourceSink< Reply<Response>, Req<Request,Response> > ss (io);
-		sender = var::newMVar (ss.sink);
-		boost::function0<void> f = boost::bind (clientResponseLoop<Request,Response>, ss.source);
-		receiver = thread::fork (f);
-	}
-};
-
-extern std::map <network::HostPort, boost::shared_ptr<ConnectionBase_> > Connections;
-// ConnectionBase_ is cast to Connection_<Request,Response>
-// TODO: remove idle connections
-
-/** Return connection to server, creating one if necessary */
-template <class Request, class Response> boost::shared_ptr< Connection_<Request,Response> > connection (network::HostPort server) {
-	boost::shared_ptr<ConnectionBase_> vconn = Connections [server];
-	if (vconn) {
-		boost::shared_ptr< Connection_<Request,Response> > conn = boost::static_pointer_cast< Connection_<Request,Response> > (vconn);
-		io::Sink< Req<Request,Response> > sock = conn->sender->read();
-		if (sock.out->good()) return conn;
-		COUT << "Bad connection to " << server << std::endl;
-	}
-	io::IOStream io = network::connect (server);
-	boost::shared_ptr< Connection_<Request,Response> > conn (new Connection_<Request,Response> (io));
-	Connections [server] = boost::static_pointer_cast <ConnectionBase_> (conn);
-	return conn;
-}
 
 }
 
-/** Public */
+namespace client { // private client
+
+	template <class Request, class Response> void receiveReplies (io::Source< Reply<Response> > in, boost::shared_ptr< var::MVar_< std::map< uintptr_t, boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > > > > continuations) {
+		typedef std::map< uintptr_t, boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > > Continuations;
+		try {
+			while (true) {
+				Reply<Response> reply;
+				in >> reply;
+				var::Access<Continuations> contMap (*continuations);
+				boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > cont = (*contMap) [reply.continueId];
+				if (cont) cont->put (reply.response); else std::cerr << "Received reply for missing continuation" << std::endl;
+			}
+		} catch (std::exception &e) {
+			boost::variant <call::Exception, Response> response = in.in->eof() ? call::Exception ("server disconnected") : call::Exception (e);
+			in.in->setstate (in.in->failbit); // connection will not be reused
+			// resume all waiting continuations with error
+			var::Access<Continuations> contMap (*continuations);
+			for (typename Continuations::iterator it = contMap->begin(); it != contMap->end(); ++it) it->second->put (response);
+			// TODO: remove connection from Connections map
+		}
+		std::cout << "clientResponseLoop finished" << std::endl;
+	}
+
+	class ConnectionBase_ {
+	public:
+		virtual ~ConnectionBase_ () {};
+	};
+
+	template <class Request, class Response> class Connection_ : public ConnectionBase_ {
+	public:
+		typedef std::map< uintptr_t, boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > > Continuations;
+		MVAR (Continuations) continuations; // this MVar protects sender too.
+		io::Sink< Req<Request> > sender;
+		thread::Thread receiver;
+		Connection_ (io::IOStream io) {
+			continuations = var::newMVar (Continuations());
+		 COUT << "creating connection" << std::endl;
+			io::SourceSink< Reply<Response>, Req<Request> > ss (io);
+			sender = ss.sink;
+			boost::function0<void> f = boost::bind (receiveReplies <Request,Response>, ss.source, continuations);
+			receiver = thread::fork (f);
+		}
+		~Connection_ () {
+		 COUT << "killing connection" << std::endl;
+			receiver->interrupt();}
+	};
+
+	extern std::map <network::HostPort, boost::shared_ptr<ConnectionBase_> > Connections;
+	// ConnectionBase_ is cast to Connection_<Request,Response>
+	// TODO: remove idle connections
+
+	/** Return connection to server, creating one if necessary */
+	template <class Request, class Response> boost::shared_ptr< Connection_<Request,Response> > connection (network::HostPort server) {
+		boost::shared_ptr<ConnectionBase_> vconn = Connections [server];
+		if (vconn) {
+			boost::shared_ptr< Connection_<Request,Response> > conn = boost::static_pointer_cast< Connection_<Request,Response> > (vconn);
+			if (conn->sender.out->good()) return conn;
+			std::cout << "Bad connection to " << server << std::endl;
+		}
+		io::IOStream io = network::connect (server);
+		boost::shared_ptr< Connection_<Request,Response> > conn (new Connection_<Request,Response> (io));
+		Connections [server] = boost::static_pointer_cast <ConnectionBase_> (conn);
+		return conn;
+	}
+
+}
+}
+
 namespace call {
 
 /** Accept client connections, forking a thread for each one. Returns listener thread, which you may terminate to stop listening. Each connection thread forks a thread on each requests, which applies the respond function, and sends result back to client. */
 template <class Request, class Response> boost::shared_ptr<boost::thread> listen (network::Port port, boost::function1 <Response, Request> respond) {
-	return network::listen (port, boost::bind (_call::acceptClient <Request, Response>, respond, _1));
+	return network::listen (port, boost::bind (_call::server::acceptClient <Request, Response>, respond, _1));
 }
 template <class Request, class Response> boost::shared_ptr<boost::thread> listen (network::Port port, Response (*respond) (Request)) {
 	boost::function1 <Response, Request> f = respond;
@@ -150,22 +167,25 @@ template <class Request, class Response> boost::shared_ptr<boost::thread> listen
 }
 
 /** Send message and wait for response. Thread-safe. */
-// TODO: timeout and raise Exception after N seconds (and close connection)
 template <class Request, class Response> Response call (network::HostPort host, Request request) {
-	boost::shared_ptr< _call::Connection_<Request,Response> > conn = _call::connection <Request,Response> (host);
+	typedef std::map< uintptr_t, boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > > Continuations;
+	boost::shared_ptr< _call::client::Connection_<Request,Response> > conn = _call::client::connection <Request,Response> (host);
 	boost::shared_ptr< var::MVar_< boost::variant <call::Exception, Response> > > cont = var::newMVar< boost::variant <call::Exception, Response> > ();
+	uintptr_t id = (uintptr_t) cont.get();
 	{
-		var::Access< io::Sink< _call::Req<Request,Response> > > sink (*conn->sender);
-		*sink << _call::Req<Request,Response> (registrar::add (cont), request);
+		var::Access<Continuations> contMap (*conn->continuations);
+		(*contMap) [id] = cont;
+		conn->sender << _call::Req<Request> (id, request);
 	}
-	boost::variant <call::Exception, Response> response = cont->take(); // TODO: timeout
+	boost::variant <call::Exception, Response> response = cont->take();
 	if (Response* r = boost::get<Response> (&response)) return * r;
 	throw * boost::get<call::Exception> (&response);
 }
 
 }
 
-/* Serialization for types we use */
+
+/* Serialization for types we transport */
 
 #include <boost/serialization/variant.hpp>
 
@@ -177,13 +197,13 @@ template <class Archive> void serialize (Archive & ar, call::Exception & x, cons
 	ar & x.errorMessage;
 }
 
-template <class Archive, class Request, class Response> void serialize (Archive &ar, _call::Req<Request,Response> &x, const unsigned version) {
-	ar & x.continuation;
+template <class Archive, class Request> void serialize (Archive &ar, _call::Req<Request> &x, const unsigned version) {
+	ar & x.continueId;
 	ar & x.request;
 }
 
 template <class Archive, class Response> void serialize (Archive &ar, _call::Reply<Response> &x, const unsigned version) {
-	ar & x.continuation;
+	ar & x.continueId;
 	ar & x.response;
 }
 
