@@ -53,11 +53,11 @@ public:
 		host (remote::thisHost()),
 		localRef (registrar::add (boost::shared_ptr< Record<T> > (new Record<T> (1, object)))) {}
 	Ref_ (remote::Host host, registrar::Ref< Record<T> > localRef) : host(host), localRef(localRef) {
-		//TODO: remote::eval (host, thunk (FUNT(_remoteref::incrementRef,T), localRef));
+		remote::eval (host, thunk (FUNT(_remoteref::incrementRef,T), localRef));
 	}
 	~Ref_ () {
 		try {
-			//TODO: remote::eval (host, thunk (FUNT(_remoteref::decrementRef,T), localRef));
+			remote::eval (host, thunk (FUNT(_remoteref::decrementRef,T), localRef));
 		} catch (std::exception &e) {
 			std::cerr << "~Ref<" << typeid(T).name() << ">: (" << typeid(e).name() << ") " << e.what() << std::endl;
 		}
