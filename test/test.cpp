@@ -5,8 +5,16 @@
 #include <iostream>
 #include <10util/util.h>
 #include <remote/thunk.h>
+#include <boost/variant.hpp>
 
 using namespace std;
+
+struct Foo {
+	int x;
+};
+
+std::ostream& operator<< (std::ostream& out, const Foo &x) {out << x.x; return out;}
+std::istream& operator>> (std::istream& in, Foo &x) {in >> x.x; return in;}
 
 static int hello (string arg) {return 1;}
 static Unit goodbye (unsigned arg, string arg2) {return unit;}
@@ -16,4 +24,8 @@ int main (int argc, const char* argv[]) {
 	cout << x.funKey << endl;
 	Thunk<Unit> y = thunk (FUN(goodbye), (unsigned)1, string("world"));
 	cout << y.funKey << endl;
+	boost::variant< int, Foo > z;
+	Foo f;
+	cin >> f;
+	cout << z << endl;
 }

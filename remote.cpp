@@ -1,8 +1,6 @@
 
 #include "remote.h"
-#include <stdexcept>
-#include <map>
-#include <10util/util.h>
+#include <10util/util.h> // split_string
 
 /** Extract hostname and port from "Hostname:Port", or "Hostname" which uses default port */
 network::HostPort remote::hostPort (Host host) {
@@ -19,12 +17,13 @@ remote::Host remote::thisHost () {
 	return network::MyHostname + ":" + to_string (ListenPort);
 }
 
-static std::string reply (ThunkSerialOut action) {
-	return action ();
+/** Request is an encoded ThunkSerialOut, Response is an io::Code */
+static io::Code reply (io::Code thunkCode) {
+	ThunkSerialOut thunk = io::decode<ThunkSerialOut> (thunkCode);
+	return thunk ();
 }
 
-/** Start thread that will accept `remote::eval` requests from the network.
- * This must be started on every machine in the network */
+/** Start thread that will accept `remote::eval` requests from the network */
 boost::shared_ptr <boost::thread> remote::listen (network::Port port) {
 	ListenPort = port;
 	return call::listen (port, reply);

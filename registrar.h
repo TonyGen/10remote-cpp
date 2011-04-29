@@ -70,10 +70,14 @@ namespace registrar {
 
 }
 
-/* Serialization */
+/* Printing & Serialization */
 
-namespace boost {
-namespace serialization {
+template <class T> std::ostream& operator<< (std::ostream& out, const registrar::Ref<T> &x) {
+	out << "registrar::Ref<" << typeid(T).name() << "> ";
+	out << x.id;
+	return out;}
+
+namespace boost {namespace serialization {
 
 template <class Archive, class T> void serialize (Archive & ar, registrar::Ref<T> & x, const unsigned version) {
 	ar & x.id;

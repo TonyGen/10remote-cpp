@@ -11,11 +11,11 @@
 using namespace std;
 
 void mainClient (network::HostPort host, string message) {
-	string reply = call::call <string, string> (host, message);
+	io::Code reply = call::call (host, io::Code(message));
 	cout << reply << endl;
 }
 
-static string respond (string req) {
+static io::Code respond (io::Code req) {
 	cout << req << endl;
 	return req;
 }

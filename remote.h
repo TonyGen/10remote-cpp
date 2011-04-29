@@ -5,7 +5,7 @@
 
 #include <vector>
 #include <utility>
-#include <10util/util.h>  // Unit
+#include <10util/unit.h>
 #include "thunk.h"
 #include "call.h"
 
@@ -17,7 +17,7 @@ namespace remote {
 	/** Extract hostname and port from "Hostname:Port", or "Hostname" which uses default port */
 	network::HostPort hostPort (Host);
 
-	const network::Port DefaultPort = 6968;
+	const network::Port DefaultPort = 16968;
 
 	/** Port we are listening on. Set by `listen` */
 	extern network::Port ListenPort;
@@ -28,25 +28,13 @@ namespace remote {
 
 	/** Execute action on given host, wait for its completion, and return its result */
 	template <class O> O eval (Host host, Thunk<O> action) {
-		std::string reply = call::call <ThunkSerialOut, std::string> (hostPort (host), ThunkSerialOut (action));
-		return io::deserialized<O> (reply);
+		io::Code result = call::call (hostPort (host), io::encode (ThunkSerialOut (action)));
+		return io::decode<O> (result);
 	}
 
 	/** Return public hostname of this machine with port we are listening on */
 	Host thisHost ();
 
 }
-
-/* Serialization for types we use */
-
-#include <boost/serialization/utility.hpp>
-#include <boost/serialization/vector.hpp>
-
-namespace boost {
-namespace serialization {
-
-template <class Archive> void serialize (Archive & ar, Unit & x, const unsigned version) {}
-
-}}
 
 #endif /* REMOTE_H_ */
