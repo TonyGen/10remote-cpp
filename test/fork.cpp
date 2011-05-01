@@ -57,7 +57,6 @@ void mainClient (remote::Host server) {
 
 void mainServer (unsigned short localPort) {
 	registerFunF (FUN(echo));
-	rthread::registerProcedures();
 	cout << "listen on " << localPort << endl;
 	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
 	t->join();  // wait forever
