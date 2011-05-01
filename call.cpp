@@ -9,7 +9,6 @@
 
 /** Respond to requests from socket one at a time using supplied respond function */
 static void respondLoop (boost::function1 <call::Response, call::Request> respond, io::IOStream stream) {
-	stream->exceptions (stream->eofbit | stream->failbit | stream->badbit);
 	try {
 		for (;;) {
 			call::Request request;

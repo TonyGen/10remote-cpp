@@ -8,7 +8,7 @@
 
 /** Fork thread on host to execute action. */
 rthread::Thread rthread::fork (remote::Host host, Thunk<void> action) {
-	return remote::eval_ (host, thunk (FUNT(thread::fork,Thunk), action));
+	return remote::evalR (host, thunk (FUNT(thread::fork,Thunk), action));
 }
 
 static Unit doInterrupt (thread::Thread t) {t->interrupt(); return unit;}
@@ -37,7 +37,7 @@ void rthread::parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > co
 	thread::parallel (foreActs, aftActs);
 }
 
-void rthread::registerProcedures () {
+void _rthread::registerProcedures () {
 	remote::registerRefProcedures<boost::thread>();
 	registerFunF (FUNT(thread::fork,Thunk));
 	registerFunF (FUN(applyInterrupt));

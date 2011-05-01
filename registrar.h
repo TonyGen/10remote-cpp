@@ -1,7 +1,6 @@
 /* Local registry of objects referenced by id. Useful for remote reference to an object (see remote/ref.h) */
 
-#ifndef REGISTRAR_H_
-#define REGISTRAR_H_
+#pragma once
 
 #include <string>
 #include <sstream>
@@ -73,8 +72,7 @@ namespace registrar {
 /* Printing & Serialization */
 
 template <class T> std::ostream& operator<< (std::ostream& out, const registrar::Ref<T> &x) {
-	out << "registrar::Ref<" << typeid(T).name() << "> ";
-	out << x.id;
+	out << "Ref<" << typeid(T).name() << "> " << x.id;
 	return out;}
 
 namespace boost {namespace serialization {
@@ -84,5 +82,3 @@ template <class Archive, class T> void serialize (Archive & ar, registrar::Ref<T
 }
 
 }}
-
-#endif /* REGISTRAR_H_ */

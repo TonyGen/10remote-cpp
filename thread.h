@@ -1,7 +1,6 @@
 /* Execute Procedures on remote hosts. Each host must be listening. */
 
-#ifndef RTHREAD_H_
-#define RTHREAD_H_
+#pragma once
 
 #include <vector>
 #include <utility>
@@ -10,10 +9,6 @@
 #include "ref.h"
 
 namespace rthread {
-
-	/** Register any Procedures that clients of this module call on this server.
-	 * This must be invoked at startup time on every server expecting remote thread requests */
-	void registerProcedures ();
 
 	typedef remote::Ref<boost::thread> Thread;
 
@@ -33,4 +28,10 @@ namespace rthread {
 
 }
 
-#endif /* RTHREAD_H_ */
+namespace _rthread {
+
+/** Register any Procedures that clients of this module call on this server.
+ * This is called by remote::listen */
+void registerProcedures ();
+
+}

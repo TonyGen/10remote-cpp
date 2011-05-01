@@ -1,7 +1,6 @@
 /* Execute Procedures on remote hosts. Each host must be listening. */
 
-#ifndef REMOTE_H_
-#define REMOTE_H_
+#pragma once
 
 #include <vector>
 #include <utility>
@@ -36,5 +35,3 @@ namespace remote {
 	Host thisHost ();
 
 }
-
-#endif /* REMOTE_H_ */

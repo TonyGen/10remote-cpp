@@ -1,7 +1,6 @@
 /* Execute Procedures on remote hosts. Each host must be listening. */
 
-#ifndef RPROCESS_H_
-#define RPROCESS_H_
+#pragma once
 
 #include <vector>
 #include <utility>
@@ -10,10 +9,6 @@
 #include "ref.h"
 
 namespace rprocess {
-
-	/** Register any procedures that clients of this module may call on this server.
-	 * This must be invoked on every server at startup time if you want it to perform remote process requests */
-	void registerProcedures ();
 
 	typedef remote::Ref<process::Process_> Process;
 
@@ -32,6 +27,15 @@ namespace rprocess {
 	/** Kill process. No-op if already dead */
 	void terminate (Process);
 
+	/** Program process is running */
+	program::Program program (Process);
+
 }
 
-#endif /* RPROCESS_H_ */
+namespace _rprocess {
+
+	/** Register any procedures that clients of this module may call on this server.
+	 * This is called by remote::listen */
+	void registerProcedures ();
+
+}

@@ -1,7 +1,6 @@
 /* A thunk captures a function with its arguments, and is serializable. Serialization of the function is its name. The args must be serializable. Deserialization of a function looks up its name in a registration table. Functions must be registered beforehand. The table stores two function objects for each function. One has type [String] -> O where O is the output type, the other has type [String] -> String. The strings are the serialized form of the args, and output in the latter case. */
 
-#ifndef THUNK_H_
-#define THUNK_H_
+#pragma once
 
 #include <map>
 #include <vector>
@@ -189,4 +188,3 @@ template <class Archive> void serialize (Archive & ar, ThunkSerialOut & x, const
 
 }}
 
-#endif /* THUNK_H_ */
