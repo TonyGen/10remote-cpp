@@ -165,13 +165,13 @@ template <class B, class A, class I, class J> boost::function2<B,I,J> composeAct
 /** Printing & Serialization */
 
 template <class O> std::ostream& operator<< (std::ostream& out, const Thunk<O> &x) {
-	out << "a Thunk<" << typeid(O).name() << "> ";
-	// out << _thunk::funName (x.funKey) << "(" << concat (intersperse (std::string(", "), fmap (boost::bind (io::Code::data, _1), x.args))) << ")";
+	out << "Thunk " << x.funKey;
+	for (unsigned i = 0; i < x.args.size(); i++) out << " " << x.args[i];
 	return out;
 }
 inline std::ostream& operator<< (std::ostream& out, const ThunkSerialOut &x) {
-	out << "a ThunkSerialOut ";
-	// out << _thunk::funName (x.funKey) << "(" << concat (intersperse (std::string(", "), fmap (boost::bind (io::Code::data, _1), x.args))) << ")";
+	out << "ThunkSerialOut " << x.funKey;
+	for (unsigned i = 0; i < x.args.size(); i++) out << " " << x.args[i];
 	return out;
 }
 
