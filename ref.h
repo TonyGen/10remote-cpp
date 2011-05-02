@@ -99,6 +99,12 @@ template <class O, class T> Ref<O> applyR (Thunk< boost::function1< boost::share
 	return remote::evalR (ref.ref_->host, act);
 }
 
+/** Apply action to remote object. `registerApply<Unit,T>` must be REGISTERED on server */
+template <class T> void apply_ (Thunk< boost::function1< Unit, boost::shared_ptr<T> > > action, Ref<T> ref) {
+	apply (action, ref);
+}
+
+
 /** Register functions that support remote objects of type T */
 template <class T> void registerRefProcedures () {
 	registerFun (FUNT(_remoteref::incrementRef,T));

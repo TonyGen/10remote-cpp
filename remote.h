@@ -31,6 +31,8 @@ namespace remote {
 		return io::decode<O> (result);
 	}
 
+	inline void eval_ (Host host, Thunk<Unit> action) {eval (host, action);}
+
 	/** Return public hostname of this machine with port we are listening on */
 	Host thisHost ();
 
