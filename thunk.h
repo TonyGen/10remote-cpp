@@ -32,12 +32,15 @@ template <class O> io::Code funSerialOut (FunSerialArgs(O) fun, std::vector<io::
 	return io::encode (result);
 }
 
+struct SerialOutYes {}; // registered function's result is serializable
+struct SerialOutNo {}; // registered function's result is not serializable
+
 struct FunRecord {
 	boost::shared_ptr<void> funSerialArgsCast; // void is cast to FunSerialArgs(O)
 	boost::optional<FunSerialArgsAndOut> funSerialArgsAndOut;
-	template <class O> FunRecord (FunSerialArgs(O) funSerialArgs) :
+	template <class O> FunRecord (SerialOutNo _, FunSerialArgs(O) funSerialArgs) :
 		funSerialArgsCast (boost::static_pointer_cast <void, FunSerialArgs(O)> (boost::shared_ptr<FunSerialArgs(O)> (new FunSerialArgs(O) (funSerialArgs)))) {}
-	template <class O> FunRecord (FunSerialArgs(O) funSerialArgs, Unit _) : // Unit indicates serializable output
+	template <class O> FunRecord (SerialOutYes _, FunSerialArgs(O) funSerialArgs) :
 		funSerialArgsCast (boost::static_pointer_cast <void, FunSerialArgs(O)> (boost::shared_ptr<FunSerialArgs(O)> (new FunSerialArgs(O) (funSerialArgs)))),
 		funSerialArgsAndOut (boost::bind (funSerialOut<O>, funSerialArgs, _1)) {}
 	template <class O> FunSerialArgs(O) funSerialArgs () {
@@ -82,41 +85,31 @@ inline FunRecord lookup (FunKey funKey) {
 	return it->second;
 }
 
+/** Register function with its result possibly serializable depending on SerialOutX type (SerialOutYes or SerialOutNo).
+ * Use appropriate wrapper function below */
+template <class SerialOutX, class O> void registerFun (SerialOutX x, std::string funName, O (*fun) ()) {
+	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs0<O>, fun, _1);
+	_thunk::FunRegistry [_thunk::funKey <O (*) ()> (funName)] = _thunk::FunRecord (x, f);}
+template <class SerialOutX, class O, class I> void registerFun (SerialOutX x, std::string funName, O (*fun) (I)) {
+	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs1<O,I>, fun, _1);
+	_thunk::FunRegistry [_thunk::funKey <O (*) (I)> (funName)] = _thunk::FunRecord (x, f);}
+template <class SerialOutX, class O, class I, class J> void registerFun (SerialOutX x, std::string funName, O (*fun) (I, J)) {
+	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs2<O,I,J>, fun, _1);
+	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J)> (funName)] = _thunk::FunRecord (x, f);}
+template <class SerialOutX, class O, class I, class J, class K> void registerFun (SerialOutX x, std::string funName, O (*fun) (I, J, K)) {
+	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs3<O,I,J,K>, fun, _1);
+	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J, K)> (funName)] = _thunk::FunRecord (x, f);}
+template <class SerialOutX, class O, class I, class J, class K, class L> void registerFun (SerialOutX x, std::string funName, O (*fun) (I, J, K, L)) {
+	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs4<O,I,J,K,L>, fun, _1);
+	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J, K, L)> (funName)] = _thunk::FunRecord (x, f);}
+
 }
 
 /** Register function so it can be called by remote clients. Its output must be serializable */
-template <class O> void registerFun (std::string funName, O (*fun) ()) {
-	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs0<O>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) ()> (funName)] = _thunk::FunRecord (f, unit);}
-template <class O, class I> void registerFun (std::string funName, O (*fun) (I)) {
-	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs1<O,I>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I)> (funName)] = _thunk::FunRecord (f, unit);}
-template <class O, class I, class J> void registerFun (std::string funName, O (*fun) (I, J)) {
-	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs2<O,I,J>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J)> (funName)] = _thunk::FunRecord (f, unit);}
-template <class O, class I, class J, class K> void registerFun (std::string funName, O (*fun) (I, J, K)) {
-	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs3<O,I,J,K>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J, K)> (funName)] = _thunk::FunRecord (f, unit);}
-template <class O, class I, class J, class K, class L> void registerFun (std::string funName, O (*fun) (I, J, K, L)) {
-	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs4<O,I,J,K,L>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J, K, L)> (funName)] = _thunk::FunRecord (f, unit);}
+template <class F> void registerFun (std::string funName, F fun) {_thunk::registerFun (_thunk::SerialOutYes(), funName, fun);}
 
 /** Register function so it can be used by remote clients inside other registered functions. Its output is not serializable */
-template <class O> void registerFunF (std::string funName, O (*fun) ()) {
-	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs0<O>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) ()> (funName)] = _thunk::FunRecord (f);}
-template <class O, class I> void registerFunF (std::string funName, O (*fun) (I)) {
-	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs1<O,I>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I)> (funName)] = _thunk::FunRecord (f);}
-template <class O, class I, class J> void registerFunF (std::string funName, O (*fun) (I, J)) {
-	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs2<O,I,J>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J)> (funName)] = _thunk::FunRecord (f);}
-template <class O, class I, class J, class K> void registerFunF (std::string funName, O (*fun) (I, J, K)) {
-	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs3<O,I,J,K>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J, K)> (funName)] = _thunk::FunRecord (f);}
-template <class O, class I, class J, class K, class L> void registerFunF (std::string funName, O (*fun) (I, J, K, L)) {
-	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs4<O,I,J,K,L>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J, K, L)> (funName)] = _thunk::FunRecord (f);}
+template <class F> void registerFunF (std::string funName, F fun) {_thunk::registerFun (_thunk::SerialOutNo(), funName, fun);}
 
 /** Capture function and args. Function must be registered */
 template <class O> struct Thunk {
