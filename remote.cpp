@@ -16,7 +16,7 @@ network::Port remote::ListenPort;
 
 /** Return public hostname of this machine with port we are listening on (must already be listening) */
 remote::Host remote::thisHost () {
-	return network::MyHostname + ":" + to_string (ListenPort);
+	return network::myHostname() + ":" + to_string (ListenPort);
 }
 
 /** Request is an encoded ThunkSerialOut, Response is an io::Code */
