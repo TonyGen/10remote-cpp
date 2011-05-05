@@ -131,7 +131,7 @@ template <class O, class I, class J, class K> Thunk<O> thunk (std::string funNam
 template <class O, class I, class J, class K, class L> Thunk<O> thunk (std::string funName, O (*fun) (I, J, K, L), I arg1, J arg2, K arg3, L arg4) {
 	return Thunk<O> (_thunk::funKey <O (*) (I, J, K, L)> (funName), items (io::encode(arg1), io::encode(arg2), io::encode(arg3), io::encode(arg4)));}
 
-
+/** Same as Thunk<O> except output O is serialized */
 struct ThunkSerialOut {
 	_thunk::FunKey funKey;
 	std::vector <io::Code> args;
