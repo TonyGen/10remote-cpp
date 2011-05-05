@@ -8,6 +8,7 @@
 #include <10util/unit.h>
 #include "registrar.h"
 #include "remote.h"
+#include <10util/util.h> // typeName
 
 namespace _remoteref { // private namespace
 
@@ -58,7 +59,7 @@ public:
 		try {
 			remote::eval (host, thunk (FUNT(_remoteref::decrementRef,T), localRef));
 		} catch (std::exception &e) {
-			std::cerr << "~Ref<" << typeid(T).name() << ">: (" << typeid(e).name() << ") " << e.what() << std::endl;
+			std::cerr << "~Ref<" << typeName<T>() << ">: (" << typeName(e) << ") " << e.what() << std::endl;
 		}
 	}
 };
@@ -132,7 +133,7 @@ template <class O, class T> void registerApplyR () {
 /* Printing & Serialization */
 
 template <class T> std::ostream& operator<< (std::ostream& out, const remote::Ref<T> &x) {
-	out << "Ref<" << typeid(T).name() << "> " << x.ref_->host << " " << x.ref_->localRef.id;
+	out << "Ref<" << typeName<T>() << "> " << x.ref_->host << " " << x.ref_->localRef.id;
 	return out;}
 
 namespace boost {namespace serialization {

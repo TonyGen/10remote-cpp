@@ -5,6 +5,7 @@
 #include <10util/io.h>
 #include <10util/network.h>
 #include <boost/function.hpp>
+#include <10util/util.h> // typeName
 
 namespace call {
 
@@ -48,8 +49,8 @@ public:
 	std::string errorType;  // typically type name
 	std::string errorMessage;
 	Exception (const std::exception &e)
-		: errorType (typeid(e).name()), errorMessage (std::string (e.what())) {}
-	Exception (std::string message) : errorType (typeid(Exception).name()), errorMessage(message) {}
+		: errorType (typeName(e)), errorMessage (std::string (e.what())) {}
+	Exception (std::string message) : errorType (typeName<Exception>()), errorMessage(message) {}
 	Exception () {}  // for serialization
 	~Exception () throw () {}
 	const char* what() const throw () {  // overriden

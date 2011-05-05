@@ -22,7 +22,7 @@ static void respondLoop (boost::function1 <call::Response, call::Request> respon
 	} catch (std::exception &e) {
 		// stop looping on connection close or error (and print to stderr if error)
 		if (! stream->eof())
-			std::cerr << "connection to client aborted: (" << typeid(e).name() << ") " << e.what() << std::endl;
+			std::cerr << "connection to client aborted: (" << typeName(e) << ") " << e.what() << std::endl;
 		// else client closed connection
 	}
 }

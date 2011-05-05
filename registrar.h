@@ -8,6 +8,7 @@
 #include <utility>
 #include <typeinfo>
 #include <boost/shared_ptr.hpp>
+#include <10util/util.h> // typeName
 
 namespace _registrar { // private
 
@@ -38,7 +39,7 @@ namespace registrar {
 	// public
 		/** Fetch object from registry, null ptr if missing */
 		boost::shared_ptr<T> deref () {
-			boost::shared_ptr< _registrar::Entry<T> > p = boost::static_pointer_cast< _registrar::Entry<T> > (_registrar::Registry [typeid(T).name()] [id]);
+			boost::shared_ptr< _registrar::Entry<T> > p = boost::static_pointer_cast< _registrar::Entry<T> > (_registrar::Registry [typeName<T>()] [id]);
 			return p ? p->object : boost::shared_ptr<T>();
 		}
 		T* operator-> () {
@@ -50,7 +51,7 @@ namespace registrar {
 		boost::shared_ptr<T> remove() {
 			// TODO: speed up using find and iterator remove
 			boost::shared_ptr<T> obj = deref();
-			_registrar::Registry [typeid(T).name()] .erase (id);
+			_registrar::Registry [typeName<T>()] .erase (id);
 			return obj;
 		}
 	};
@@ -59,12 +60,12 @@ namespace registrar {
 	template <class T> Ref<T> add (boost::shared_ptr<T> p) {
 		uintptr_t id = (uintptr_t) p.get();
 		boost::shared_ptr< _registrar::Entry<T> > q (new _registrar::Entry<T> (p));
-		_registrar::Registry [typeid(T).name()] [id] = boost::static_pointer_cast <_registrar::EntryBase> (q);
+		_registrar::Registry [typeName<T>()] [id] = boost::static_pointer_cast <_registrar::EntryBase> (q);
 		return Ref<T> (id);
 	}
 
 	template <class T> void remove (boost::shared_ptr<T> p) {
-		_registrar::Registry [typeid(T).name()] .erase ((uintptr_t) p.get());
+		_registrar::Registry [typeName<T>()] .erase ((uintptr_t) p.get());
 	}
 
 }
@@ -72,7 +73,7 @@ namespace registrar {
 /* Printing & Serialization */
 
 template <class T> std::ostream& operator<< (std::ostream& out, const registrar::Ref<T> &x) {
-	out << "Ref<" << typeid(T).name() << "> " << x.id;
+	out << "Ref<" << typeName<T>() << "> " << x.id;
 	return out;}
 
 namespace boost {namespace serialization {

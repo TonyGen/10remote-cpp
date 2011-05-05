@@ -11,13 +11,13 @@
 #include <10util/io.h> // (de)serialized
 #include <10util/vector.h> // items, intersperse, concat
 #include <10util/unit.h>
-#include <10util/util.h> // split_string
+#include <10util/util.h> // split_string, typeName
 
 namespace _thunk { // private namespace
 
 typedef std::string FunKey;
 
-template <class F> FunKey funKey (std::string funName) {return funName + " | " + typeid(F).name();}
+template <class F> FunKey funKey (std::string funName) {return funName + " | " + typeName<F>();}
 
 inline std::string funName (FunKey key) {
 	std::vector<std::string> tokens = split_string ('|', key);
