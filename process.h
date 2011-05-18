@@ -31,11 +31,3 @@ namespace rprocess {
 	program::Program program (Process);
 
 }
-
-namespace _rprocess {
-
-	/** Register any procedures that clients of this module may call on this server.
-	 * This is called by remote::listen */
-	void registerProcedures ();
-
-}

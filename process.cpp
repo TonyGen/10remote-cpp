@@ -4,6 +4,7 @@
 #include <map>
 #include <10util/util.h>
 #include <utility> // pair
+#include <10util/library.h> // INITIALIZE
 
 using namespace std;
 
@@ -30,7 +31,7 @@ void rprocess::terminate (Process process) {remote::apply (thunk (FUN(applyTermi
 
 program::Program rprocess::program (Process process) {return remote::apply (thunk (FUN(applyGetProgram)), process);}
 
-void _rprocess::registerProcedures () {
+static void registerProcedures () {
 	remote::registerRefProcedures<process::Process_>();
 	registerFunF (FUN(process::launch));
 	registerFunF (FUN(applyRestart));
@@ -42,3 +43,7 @@ void _rprocess::registerProcedures () {
 	remote::registerApply<int,process::Process_>();
 	remote::registerApply<Unit,process::Process_>();
 }
+
+INITIALIZE (
+	registerProcedures();
+)

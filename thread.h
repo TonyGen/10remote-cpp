@@ -27,11 +27,3 @@ namespace rthread {
 	void parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > controlActions, std::vector< std::pair< remote::Host, Thunk<Unit> > > continuousActions);
 
 }
-
-namespace _rthread {
-
-/** Register any Procedures that clients of this module call on this server.
- * This is called by remote::listen */
-void registerProcedures ();
-
-}

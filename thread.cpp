@@ -5,6 +5,7 @@
 #include <10util/util.h>
 #include <10util/thread.h>
 #include <10util/vector.h> // fmap
+#include <10util/library.h> // INITIALIZE
 
 /** Fork thread on host to execute action. */
 rthread::Thread rthread::fork (remote::Host host, Thunk<void> action) {
@@ -37,9 +38,13 @@ void rthread::parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > co
 	thread::parallel (foreActs, aftActs);
 }
 
-void _rthread::registerProcedures () {
+static void registerProcedures () {
 	remote::registerRefProcedures<boost::thread>();
 	registerFunF (FUNT(thread::fork,Thunk));
 	registerFunF (FUN(applyInterrupt));
 	registerFunF (FUN(applyJoin));
 }
+
+INITIALIZE (
+	registerProcedures();
+)

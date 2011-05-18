@@ -60,7 +60,7 @@ template <class O, class I, class J, class K> O funSerialArgs3 (O (*fun) (I, J, 
 template <class O, class I, class J, class K, class L> O funSerialArgs4 (O (*fun) (I, J, K, L), std::vector<io::Code> args) {
 	return fun (io::decode<I> (args[0]), io::decode<J> (args[1]), io::decode<K> (args[2]), io::decode<L> (args[3]));}
 
-extern std::map <FunKey, FunRecord> FunRegistry;
+std::map <FunKey, FunRecord> & FunRegistry ();
 
 }
 
@@ -80,8 +80,8 @@ public:
 namespace _thunk {
 
 inline FunRecord lookup (FunKey funKey) {
-	std::map<FunKey,FunRecord>::iterator it = FunRegistry.find (funKey);
-	if (it == FunRegistry.end()) throw FunctionNotFound (funKey, false);
+	std::map<FunKey,FunRecord>::iterator it = FunRegistry().find (funKey);
+	if (it == FunRegistry().end()) throw FunctionNotFound (funKey, false);
 	return it->second;
 }
 
@@ -89,19 +89,19 @@ inline FunRecord lookup (FunKey funKey) {
  * Use appropriate wrapper function below */
 template <class SerialOutX, class O> void registerFun (SerialOutX x, std::string funName, O (*fun) ()) {
 	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs0<O>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) ()> (funName)] = _thunk::FunRecord (x, f);}
+	_thunk::FunRegistry() [_thunk::funKey <O (*) ()> (funName)] = _thunk::FunRecord (x, f);}
 template <class SerialOutX, class O, class I> void registerFun (SerialOutX x, std::string funName, O (*fun) (I)) {
 	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs1<O,I>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I)> (funName)] = _thunk::FunRecord (x, f);}
+	_thunk::FunRegistry() [_thunk::funKey <O (*) (I)> (funName)] = _thunk::FunRecord (x, f);}
 template <class SerialOutX, class O, class I, class J> void registerFun (SerialOutX x, std::string funName, O (*fun) (I, J)) {
 	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs2<O,I,J>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J)> (funName)] = _thunk::FunRecord (x, f);}
+	_thunk::FunRegistry() [_thunk::funKey <O (*) (I, J)> (funName)] = _thunk::FunRecord (x, f);}
 template <class SerialOutX, class O, class I, class J, class K> void registerFun (SerialOutX x, std::string funName, O (*fun) (I, J, K)) {
 	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs3<O,I,J,K>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J, K)> (funName)] = _thunk::FunRecord (x, f);}
+	_thunk::FunRegistry() [_thunk::funKey <O (*) (I, J, K)> (funName)] = _thunk::FunRecord (x, f);}
 template <class SerialOutX, class O, class I, class J, class K, class L> void registerFun (SerialOutX x, std::string funName, O (*fun) (I, J, K, L)) {
 	FunSerialArgs(O) f = boost::bind (_thunk::funSerialArgs4<O,I,J,K,L>, fun, _1);
-	_thunk::FunRegistry [_thunk::funKey <O (*) (I, J, K, L)> (funName)] = _thunk::FunRecord (x, f);}
+	_thunk::FunRegistry() [_thunk::funKey <O (*) (I, J, K, L)> (funName)] = _thunk::FunRecord (x, f);}
 
 }
 

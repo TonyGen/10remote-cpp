@@ -1,8 +1,6 @@
 
 #include "remote.h"
 #include <10util/util.h> // split_string
-#include "thread.h"
-#include "process.h"
 
 /** Extract hostname and port from "Hostname:Port", or "Hostname" which uses default port */
 network::HostPort remote::hostPort (Host host) {
@@ -27,8 +25,6 @@ static io::Code reply (io::Code thunkCode) {
 
 /** Start thread that will accept `remote::eval` requests from the network */
 boost::shared_ptr <boost::thread> remote::listen (network::Port port) {
-	_rprocess::registerProcedures();
-	_rthread::registerProcedures();
 	ListenPort = port;
 	return call::listen (port, reply);
 }
