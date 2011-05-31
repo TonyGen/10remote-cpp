@@ -1,4 +1,4 @@
-/* Execute Procedures on remote hosts. Each host must be listening. */
+/* Execute Thunk on remote host. Remote host must be listening. */
 
 #pragma once
 
@@ -30,8 +30,9 @@ namespace remote {
 		io::Code result = call::call (hostPort (host), io::encode (ThunkSerialOut (action)));
 		return io::decode<O> (result);
 	}
-
-	inline void eval_ (Host host, Thunk<Unit> action) {eval (host, action);}
+	template <> inline void eval<void> (Host host, Thunk<void> action) {
+		call::call (hostPort (host), io::encode (ThunkSerialOut (action)));
+	}
 
 	/** Return public hostname of this machine with port we are listening on */
 	Host thisHost ();

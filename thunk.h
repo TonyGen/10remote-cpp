@@ -31,6 +31,10 @@ template <class O> io::Code funSerialOut (FunSerialArgs(O) fun, std::vector<io::
 	O result = fun (args);
 	return io::encode (result);
 }
+template <> inline io::Code funSerialOut<void> (FunSerialArgs(void) fun, std::vector<io::Code> args) {
+	fun (args);
+	return io::encode (unit);
+}
 
 struct SerialOutYes {}; // registered function's result is serializable
 struct SerialOutNo {}; // registered function's result is not serializable
