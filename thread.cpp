@@ -3,48 +3,39 @@
 #include <stdexcept>
 #include <map>
 #include <10util/util.h>
-#include <10util/thread.h>
 #include <10util/vector.h> // fmap
-#include <10util/library.h> // INITIALIZE
+
+remote::Module _rthread::module ("remote", "remote/thread.h");
+
+thread::Thread _rthread::fork (remote::Thunk<void> action) {return thread::fork (action);}
 
 /** Fork thread on host to execute action. */
-rthread::Thread rthread::fork (remote::Host host, Thunk<void> action) {
-	return remote::evalR (host, thunk (FUNT(thread::fork,Thunk), action));
+remote::Thread remote::fork (remote::Host host, remote::Thunk<void> action) {
+	return remote::evalR (host, remote::thunk (MFUN(_rthread,fork), action));
 }
 
-static Unit doInterrupt (thread::Thread t) {t->interrupt(); return unit;}
-static boost::function1 <Unit, thread::Thread> applyInterrupt () {return boost::bind (doInterrupt, _1);}
+static void doInterrupt (thread::Thread t) {t->interrupt();}
+boost::function1 <void, thread::Thread> _rthread::applyInterrupt () {return boost::bind (doInterrupt, _1);}
 
 /** Kill thread */
-void rthread::interrupt (Thread t) {remote::apply (thunk(FUN(applyInterrupt)), t);}
+void remote::interrupt (Thread t) {remote::apply (remote::thunk(MFUN(_rthread,applyInterrupt)), t);}
 
-void rthread::interruptAll (std::vector<Thread> ts) {for (unsigned i = 0; i < ts.size(); i++) interrupt (ts[i]);}
+void remote::interruptAll (std::vector<Thread> ts) {for (unsigned i = 0; i < ts.size(); i++) interrupt (ts[i]);}
 
 
-static Unit doJoin (thread::Thread t) {t->join(); return unit;}
-static boost::function1 <Unit, thread::Thread> applyJoin () {return boost::bind (doJoin, _1);}
+static void doJoin (thread::Thread t) {t->join();}
+boost::function1 <void, thread::Thread> _rthread::applyJoin () {return boost::bind (doJoin, _1);}
 
 /** Wait for thread to complete */
-void rthread::join (Thread t) {remote::apply (thunk(FUN(applyJoin)), t);}
+void remote::join (Thread t) {remote::apply (remote::thunk(MFUN(_rthread,applyJoin)), t);}
 
-static boost::function0<void> remoteEval (std::pair< remote::Host, Thunk<Unit> > x) {
-	return boost::bind (remote::eval<Unit>, x.first, x.second);
+static boost::function0<void> remoteEval (std::pair< remote::Host, remote::Thunk<void> > x) {
+	return boost::bind (remote::eval<void>, x.first, x.second);
 }
 
 /** Fork actions on associated hosts; wait for control actions to finish then terminate continuous actions. If one action fails then terminate all other actions and rethrow failure in main thread */
-void rthread::parallel (std::vector< std::pair< remote::Host, Thunk<Unit> > > controlActions, std::vector< std::pair< remote::Host, Thunk<Unit> > > continuousActions) {
+void remote::parallel (std::vector< std::pair< remote::Host, remote::Thunk<void> > > controlActions, std::vector< std::pair< remote::Host, remote::Thunk<void> > > continuousActions) {
 	std::vector< boost::function0<void> > foreActs = fmap (remoteEval, controlActions);
 	std::vector< boost::function0<void> > aftActs = fmap (remoteEval, continuousActions);
 	thread::parallel (foreActs, aftActs);
 }
-
-static void registerProcedures () {
-	remote::registerRefProcedures<boost::thread>();
-	registerFunF (FUNT(thread::fork,Thunk));
-	registerFunF (FUN(applyInterrupt));
-	registerFunF (FUN(applyJoin));
-}
-
-INITIALIZE (
-	registerProcedures();
-)

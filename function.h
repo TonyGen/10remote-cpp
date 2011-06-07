@@ -7,14 +7,7 @@
 #include <10util/io.h>
 #include <10util/vector.h>
 #include <10util/compile.h>
-#include <10util/util.h> // typeName
-
-/** Macro to be used as first three args in `thunk`. If fun needs template argument put them in second arg of FUNT without angle brackets. */
-#define FUN(functionName) functionName##_module, #functionName, &functionName
-#define FUNT(functionName,...) functionName##_module #functionName, &functionName<__VA_ARGS__>
-
-#define FunSerialArgs(O) boost::function1< O, io::Code >
-typedef boost::function1< io::Code, io::Code > FunSerialArgsOut;
+#include <10util/type.h>
 
 namespace remote {
 
@@ -53,6 +46,15 @@ namespace _function {
 	compile::LinkContext funSerialArgsOutDef (remote::Module module, std::string funName, remote::FunSignature funSig);
 }
 
+/** Macro to create a `Function` from single function reference. It expects function's module to be found at `functionName_module`. Use macro as first arg to `thunk` only; it expands to its first three arguments. If the function needs template arguments put them in second arg of FUNT without angle brackets. */
+#define FUN(functionName) functionName##_module, #functionName, &functionName
+#define FUNT(functionName,...) functionName##_module, #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), &functionName<__VA_ARGS__>
+#define MFUN(namespace_,functionName) namespace_::module, #namespace_ "::" #functionName, & namespace_::functionName
+#define MFUNT(namespace_,functionName,...) namespace_::module, #namespace_ "::" #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), & namespace_::functionName<__VA_ARGS__>
+
+#define FunSerialArgs(O) boost::function1< O, io::Code >
+typedef boost::function1< io::Code, io::Code > FunSerialArgsOut;
+
 namespace remote {
 
 struct Function {
@@ -64,13 +66,13 @@ struct Function {
 	template <class O> FunSerialArgs(O) funSerialArgs () {
 		assert (typeName<O>() == funSig.returnType);
 		compile::LinkContext ctx = _function::funSerialArgsDef (module, "serialArgsFun", funSig);
-		ctx.headers.push_back ("#include <boost/bind.hpp");
+		ctx.headers.push_back ("#include <boost/bind.hpp>");
 		return compile::eval<FunSerialArgs(O)> (ctx, "boost::bind (serialArgsFun, _1)");
 	}
 	/** Return this function in its serialized args and output form */
 	FunSerialArgsOut funSerialArgsOut () {
 		compile::LinkContext ctx = _function::funSerialArgsOutDef (module, "serialArgsOutFun", funSig);
-		ctx.headers.push_back ("#include <boost/bind.hpp");
+		ctx.headers.push_back ("#include <boost/bind.hpp>");
 		return compile::eval<FunSerialArgsOut> (ctx, "boost::bind (serialArgsOutFun, _1)");
 	}
 };
@@ -120,6 +122,22 @@ struct ThunkSerialOut {
 
 }
 
+namespace remote {
+
+template <class B, class A, class I> B _composeAct1 (Thunk< boost::function1<B,A> > act2, Thunk< boost::function1<A,I> > act1, I i) {return act2() (act1() (i));}
+template <class B, class A, class I, class J> B _composeAct2 (Thunk< boost::function1<B,A> > act2, Thunk< boost::function2<A,I,J> > act1, I i, J j) {return act2() (act1() (i, j));}
+
+/** Compose actions so act1's result is feed into act2 */
+template <class B, class A> B composeAct0 (Thunk< boost::function1<B,A> > act2, Thunk<A> act1) {return act2() (act1());}
+template <class B, class A, class I> boost::function1<B,I> composeAct1 (Thunk< boost::function1<B,A> > act2, Thunk< boost::function1<A,I> > act1) {return boost::bind (_composeAct1<B,A,I>, act2, act1, _1);}
+template <class B, class A, class I, class J> boost::function2<B,I,J> composeAct2 (Thunk< boost::function1<B,A> > act2, Thunk< boost::function2<A,I,J> > act1, I i, J j) {return boost::bind (_composeAct2<B,A,I,J>, act2, act1, _1, _2);}
+
+extern remote::Module composeAct0_module;
+extern remote::Module composeAct1_module;
+extern remote::Module composeAct2_module;
+
+}
+
 /** Printing & Serialization */
 
 inline std::ostream& operator<< (std::ostream& out, const remote::Module &x) {
@@ -128,8 +146,10 @@ inline std::ostream& operator<< (std::ostream& out, const remote::Module &x) {
 }
 inline std::ostream& operator<< (std::ostream& out, const remote::FunSignature &x) {
 	out << x.returnType << " " << x.funName << " (";
-	for (unsigned i = 0; i < x.argTypes.size(); i++)
-		out << x.argTypes[i] << ", ";
+	for (unsigned i = 0; i < x.argTypes.size(); i++) {
+		out << x.argTypes[i];
+		if (i < x.argTypes.size() - 1) out << ", ";
+	}
 	out << ")";
 	return out;
 }
@@ -171,3 +191,32 @@ template <class Archive> void serialize (Archive & ar, remote::ThunkSerialOut & 
 }
 
 }}
+
+template <class A> std::vector<TypeName> typeNames () {
+	std::vector<TypeName> list;
+	list.push_back (typeName<A>());
+	return list;
+}
+template <class A, class B> std::vector<TypeName> typeNames () {
+	std::vector<TypeName> list;
+	list.push_back (typeName<A>());
+	list.push_back (typeName<B>());
+	return list;
+}
+template <class A, class B, class C> std::vector<TypeName> typeNames () {
+	std::vector<TypeName> list;
+	list.push_back (typeName<A>());
+	list.push_back (typeName<B>());
+	list.push_back (typeName<C>());
+	return list;
+}
+template <class A, class B, class C, class D> std::vector<TypeName> typeNames () {
+	std::vector<TypeName> list;
+	list.push_back (typeName<A>());
+	list.push_back (typeName<B>());
+	list.push_back (typeName<C>());
+	list.push_back (typeName<D>());
+	return list;
+}
+
+std::string showTypeArgs (std::vector<TypeName> ts);

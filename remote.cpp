@@ -19,7 +19,7 @@ remote::Host remote::thisHost () {
 
 /** Request is an encoded ThunkSerialOut, Response is an io::Code */
 static io::Code reply (io::Code thunkCode) {
-	ThunkSerialOut thunk = io::decode<ThunkSerialOut> (thunkCode);
+	remote::ThunkSerialOut thunk = io::decode<remote::ThunkSerialOut> (thunkCode);
 	return thunk ();
 }
 

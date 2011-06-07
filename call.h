@@ -5,7 +5,7 @@
 #include <10util/io.h>
 #include <10util/network.h>
 #include <boost/function.hpp>
-#include <10util/util.h> // typeName
+#include <10util/type.h>
 
 namespace call {
 

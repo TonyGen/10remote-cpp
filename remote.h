@@ -5,7 +5,7 @@
 #include <vector>
 #include <utility>
 #include <10util/unit.h>
-#include "thunk.h"
+#include "function.h"
 #include "call.h"
 
 namespace remote {

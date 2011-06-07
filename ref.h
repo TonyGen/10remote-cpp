@@ -1,4 +1,4 @@
-/* A remote ref is a pointer to a remote object. Distributed reference counting is used so the remote object is removed from its local registry when no more remote references exist. For every object type T, you have to register procedures _remote::incrementRef<T> and _remote::decrementRef<T> */
+/* A remote ref is a pointer to a remote object. Distributed reference counting is used so the remote object is removed from its local registry when no more remote references exist. */
 /* TODO: On network failure after a certain amount of time, deregister local objects referenced only by down hosts */
 
 #pragma once
@@ -8,9 +8,11 @@
 #include <10util/unit.h>
 #include "registrar.h"
 #include "remote.h"
-#include <10util/util.h> // typeName
+#include <10util/type.h>
 
 namespace _remoteref { // private namespace
+
+extern remote::Module module;
 
 template <class T> struct Record {
 	volatile unsigned version; // used to tell if refCount has changed from a previous version
@@ -25,9 +27,8 @@ template <class T> struct Record {
 	}
 };
 
-template <class T> Unit incrementRef (registrar::Ref< Record<T> > localRef) {
+template <class T> void incrementRef (registrar::Ref< Record<T> > localRef) {
 	localRef->adjustRefCount (1);
-	return unit;
 }
 
 /** Remove ref after 15 secs if not changed */
@@ -36,12 +37,11 @@ template <class T> void removeRefSoon (registrar::Ref< Record<T> > localRef, uns
 	if (version == localRef->version) localRef.remove();
 }
 
-template <class T> Unit decrementRef (registrar::Ref< Record<T> > localRef) {
+template <class T> void decrementRef (registrar::Ref< Record<T> > localRef) {
 	std::pair<unsigned,int> verCount = localRef->adjustRefCount (-1);
 	if (verCount.second <= 0)
 		boost::thread (removeRefSoon<T>, localRef, verCount.first);
 		// Don't remove right away in case a remote::Ref is in transit after the original is destroyed
-	return unit;
 }
 
 /** While this object exists, the ref count on the host is +1 */
@@ -53,11 +53,11 @@ public:
 		host (remote::thisHost()),
 		localRef (registrar::add (boost::shared_ptr< Record<T> > (new Record<T> (1, object)))) {}
 	Ref_ (remote::Host host, registrar::Ref< Record<T> > localRef) : host(host), localRef(localRef) {
-		remote::eval (host, thunk (FUNT(_remoteref::incrementRef,T), localRef));
+		remote::eval (host, remote::thunk (MFUNT(_remoteref,incrementRef,T), localRef));
 	}
 	~Ref_ () {
 		try {
-			remote::eval (host, thunk (FUNT(_remoteref::decrementRef,T), localRef));
+			remote::eval (host, remote::thunk (MFUNT(_remoteref,decrementRef,T), localRef));
 		} catch (std::exception &e) {
 			std::cerr << "~Ref<" << typeName<T>() << ">: (" << typeName(e) << ") " << e.what() << std::endl;
 		}
@@ -81,46 +81,24 @@ public: // private to this file
 };
 
 template <class T> boost::function1< Ref<T>, boost::shared_ptr<T> > makeRef () {return boost::value_factory< Ref<T> >();}
+extern remote::Module makeRef_module;
 
-/** Same as `remote::eval` except return remote reference to result. `registerRefProcedures<O>` must be registered on server */
+/** Same as `remote::eval` except return remote reference to result. */
 template <class O> Ref<O> evalR (Host host, Thunk< boost::shared_ptr<O> > action) {
-	Thunk< Ref<O> > actToRef = thunk (FUNT(composeAct0,Ref<O>,boost::shared_ptr<O>), thunk (FUNT(remote::makeRef,O)), action);
+	Thunk< Ref<O> > actToRef = remote::thunk (FUNT(composeAct0,Ref<O>,boost::shared_ptr<O>), remote::thunk (FUNT(remote::makeRef,O)), action);
 	return eval (host, actToRef);
 }
 
-/** Apply action to remote object. `registerApply<O,T>` must be REGISTERED on server */
+/** Apply action to remote object. */
 template <class O, class T> O apply (Thunk< boost::function1< O, boost::shared_ptr<T> > > action, Ref<T> ref) {
-	Thunk<O> act = thunk (FUNT(composeAct0,O,boost::shared_ptr<T>), action, thunk (FUNT(_remoteref::deref,T), ref.ref_->localRef));
+	Thunk<O> act = remote::thunk (FUNT(composeAct0,O,boost::shared_ptr<T>), action, remote::thunk (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
 	return remote::eval (ref.ref_->host, act);
 }
 
-/** Same as `apply` except return remote reference to result. `registerApply<O,T>` must be REGISTERED on server */
+/** Same as `apply` except return remote reference to result. */
 template <class O, class T> Ref<O> applyR (Thunk< boost::function1< boost::shared_ptr<O>, boost::shared_ptr<T> > > action, Ref<T> ref) {
-	Thunk< boost::shared_ptr<O> > act = thunk (FUNT(composeAct0,boost::shared_ptr<O>,boost::shared_ptr<T>), action, thunk (FUNT(_remoteref::deref,T), ref.ref_->localRef));
+	Thunk< boost::shared_ptr<O> > act = remote::thunk (FUNT(composeAct0,boost::shared_ptr<O>,boost::shared_ptr<T>), action, thunk (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
 	return remote::evalR (ref.ref_->host, act);
-}
-
-
-/** Register functions that support remote objects of type T */
-template <class T> void registerRefProcedures () {
-	registerFun (FUNT(_remoteref::incrementRef,T));
-	registerFun (FUNT(_remoteref::decrementRef,T));
-	registerFunF (FUNT(remote::makeRef,T));
-	registerFunF (FUNT(_remoteref::deref,T));
-	registerFun (FUNT(composeAct0,Ref<T>,boost::shared_ptr<T>));
-}
-
-/** For every type of call to `apply`, receiving server must call this at startup */
-template <class O, class T> void registerApply () {
-	registerRefProcedures<T> ();
-	registerFun (FUNT(composeAct0,O,boost::shared_ptr<T>));
-}
-
-/** For every type of call to `applyR`, receiving server must call this at startup */
-template <class O, class T> void registerApplyR () {
-	registerRefProcedures<T>();
-	registerFunF (FUNT(composeAct0,boost::shared_ptr<O>,boost::shared_ptr<T>));
-	registerRefProcedures<O>();
 }
 
 }

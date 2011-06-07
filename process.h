@@ -5,10 +5,10 @@
 #include <vector>
 #include <utility>
 #include <10util/process.h>
-#include "thunk.h"
+#include "function.h"
 #include "ref.h"
 
-namespace rprocess {
+namespace remote {
 
 	typedef remote::Ref<process::Process_> Process;
 
@@ -29,5 +29,17 @@ namespace rprocess {
 
 	/** Program process is running */
 	program::Program program (Process);
+
+}
+
+namespace _rprocess {
+
+extern remote::Module module;
+process::Process launch (program::Program program);
+boost::function1 <void, process::Process> applyRestart ();
+boost::function1 <int, process::Process> applyWaitFor ();
+boost::function1 <void, process::Process> applySignal (process::Signal s);
+boost::function1 <void, process::Process> applyTerminate ();
+boost::function1 <program::Program, process::Process> applyGetProgram ();
 
 }

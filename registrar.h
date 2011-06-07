@@ -8,7 +8,7 @@
 #include <utility>
 #include <typeinfo>
 #include <boost/shared_ptr.hpp>
-#include <10util/util.h> // typeName
+#include <10util/type.h>
 
 namespace _registrar { // private
 

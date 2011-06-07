@@ -1,17 +1,16 @@
 /* Assumes util and remote library has been built and installed in /usr/local/include and /usr/local/lib.
- * Compile as: g++ function.cpp -o function -I/opt/local/include -l10util -lremote
+ * Compile as: g++ function.cpp -o function -I/opt/local/include -L/opt/local/lib -l10util -lremote -lboost_serialization-mt
  * Run as: `function` */
 
 #include <iostream>
 #include <10util/util.h>
-#include "../function.h"
+#include <remote/function.h>
 
 using namespace std;
 
-int foo (int i) {return 42 + i;}
+remote::Module split_string_module ("10util", "10util/util.h");
 
 int main (int argc, const char* argv[]) {
-	Function1<int,int> fun = Function1<int,int> ("10util", "function.cpp", "foo");
-	Thunk<int> thu = Thunk<int> (fun.funId, items (io::encode(1)));
-	cout << thu() << endl;
+	remote::Thunk< vector<string> > x = remote::thunk (FUN(split_string), ' ', string("hello world"));
+	cout << x() << endl;
 }
