@@ -21,9 +21,8 @@ namespace remote {
 	/** Port we are listening on. Set by `listen` */
 	extern network::Port ListenPort;
 
-	/** Start thread that will accept `remotely` requests from network.
-	 * This must be started on every machine in the network */
-	boost::shared_ptr <boost::thread> listen (unsigned short port = DefaultPort);
+	/** Start thread that will accept `eval` requests on given network interface (host) */
+	boost::shared_ptr <boost::thread> listen (remote::Host myHost);
 
 	/** Execute action on given host, wait for its completion, and return its result */
 	template <class O> O eval (Host host, Thunk<O> action) {

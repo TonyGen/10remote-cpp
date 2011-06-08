@@ -10,10 +10,11 @@ network::HostPort remote::hostPort (Host host) {
 	return network::HostPort (hostname, port);
 }
 
-network::Port remote::ListenPort;
+network::Port remote::ListenPort = 0;
 
 /** Return public hostname of this machine with port we are listening on (must already be listening) */
 remote::Host remote::thisHost () {
+	if (ListenPort == 0) throw std::runtime_error ("Not listening yet. Call remote::listen first");
 	return network::myHostname() + ":" + to_string (ListenPort);
 }
 
@@ -24,7 +25,9 @@ static io::Code reply (io::Code thunkCode) {
 }
 
 /** Start thread that will accept `remote::eval` requests from the network */
-boost::shared_ptr <boost::thread> remote::listen (network::Port port) {
-	ListenPort = port;
-	return call::listen (port, reply);
+boost::shared_ptr <boost::thread> remote::listen (remote::Host myHost) {
+	network::HostPort h = hostPort (myHost);
+	ListenPort = h.port;
+	network::initMyHostname (h.hostname);
+	return call::listen (ListenPort, reply);
 }
