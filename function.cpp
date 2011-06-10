@@ -5,8 +5,8 @@
 /** Function transformed to take serial stream of args */
 compile::LinkContext _function::funSerialArgsDef (remote::Module module, std::string funName, remote::FunSignature funSig) {
 	compile::LinkContext ctx;
-	ctx.libNames.push_back (module.libName);
-	ctx.headers.push_back (module.includeLine());
+	push_all (ctx.libNames, module.libNames);
+	push_all (ctx.headers, module.includeLines());
 	ctx.libPaths.push_back ("/opt/local/lib");
 	ctx.libNames.push_back ("boost_serialization-mt");
 	ctx.includePaths.push_back ("/opt/local/include");
@@ -38,9 +38,15 @@ compile::LinkContext _function::funSerialArgsDef (remote::Module module, std::st
 compile::LinkContext _function::funSerialArgsOutDef (remote::Module module, std::string funName, remote::FunSignature funSig) {
 	compile::LinkContext ctx = funSerialArgsDef (module, "x_" + funName, funSig);
 	ctx.headers.push_back ("#include <boost/archive/text_oarchive.hpp>");
+	ctx.headers.push_back ("#include <10util/unit.h>");
 	std::stringstream ss;
 	ss << "io::Code " << funName << " (io::Code args) {\n";
-	ss << "\t" << funSig.returnType << " result = x_" << funName << " (args);\n";
+	if (funSig.returnType == "void") {
+		ss << "\tx_" << funName << " (args);\n";
+		ss << "\tUnit result = unit;\n";
+	} else {
+		ss << "\t" << funSig.returnType << " result = x_" << funName << " (args);\n";
+	}
 	ss << "\tstd::stringstream ss;\n";
 	ss << "\tboost::archive::text_oarchive ar (ss);\n";
 	ss << "\tar << result;\n";
@@ -49,6 +55,11 @@ compile::LinkContext _function::funSerialArgsOutDef (remote::Module module, std:
 	ctx.headers.push_back (ss.str());
 	return ctx;
 }
+
+/** Cache of previously compiled funSerialArgs(Out) functions, so we don't recompile the same function every time */
+std::map < remote::Function, boost::shared_ptr<void> > _function::cacheO; // void is cast of FunSerialArgs(O)
+std::map < remote::Function, boost::shared_ptr<FunSerialArgsOut> > _function::cacheC;
+
 
 std::string showTypeArgs (std::vector<TypeName> ts) {
 	std::stringstream ss;
@@ -59,7 +70,7 @@ std::string showTypeArgs (std::vector<TypeName> ts) {
 	return ss.str();
 }
 
-static remote::Module module ("remote", "remote/ref.h");
+static remote::Module module ("remote", "remote/function.h");
 
 remote::Module remote::composeAct0_module = module;
 remote::Module remote::composeAct1_module = module;

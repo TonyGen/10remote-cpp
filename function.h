@@ -8,18 +8,57 @@
 #include <10util/vector.h>
 #include <10util/compile.h>
 #include <10util/type.h>
+#include <boost/shared_ptr.hpp>
+#include <map>
+#include <10util/util.h> // output vector
 
 namespace remote {
 
-struct Module {
-	library::Libname libName; // library name with out lib prefix or suffix
-	std::string headName;  // header filename to include
-	Module (library::Libname libName, std::string headName) : libName(libName), headName(headName) {}
-	Module () {} // for serialization
-	std::string includeLine () {return "#include <" + headName + ">";}
+class Module {
+	friend bool operator== (const Module& a, const Module& b) {return a.libNames == b.libNames && a.headNames == b.headNames;}
+	friend bool operator< (const Module& a, const Module& b) {return a.libNames < b.libNames || (a.libNames == b.libNames && a.headNames < b.headNames);}
+	friend bool operator!= (const Module& a, const Module& b) {return !(a == b);}
+	friend bool operator> (const Module& a, const Module& b) {return b < a;}
+	friend bool operator>= (const Module& a, const Module& b) {return !(a < b);}
+	friend bool operator<= (const Module& a, const Module& b) {return !(a > b);}
+public:
+	std::vector<library::Libname> libNames; // library names with out lib prefix or suffix
+	std::vector<std::string> headNames;  // headers to include
+	Module (library::Libname libName, std::string headName) : libNames (items(libName)), headNames (items(headName)) {}
+	Module () {}
+	Module operator+ (const Module &mod) {
+		Module newMod;
+		push_all (newMod.libNames, this->libNames);
+		push_all (newMod.libNames, mod.libNames);
+		push_all (newMod.headNames, this->headNames);
+		push_all (newMod.headNames, mod.headNames);
+		return newMod;
+	}
+	std::vector<std::string> includeLines () {
+		std::vector<std::string> lines;
+		for (unsigned i = 0; i < headNames.size(); i++)
+			lines.push_back ("#include <" + headNames[i] + ">");
+		return lines;
+	}
 };
 
-struct FunSignature {
+inline Module joinMods (std::vector<Module> mods) {
+	Module newMod;
+	for (unsigned i = 0; i < mods.size(); i++) {
+		push_all (newMod.libNames, mods[i].libNames);
+		push_all (newMod.headNames, mods[i].headNames);
+	}
+	return newMod;
+}
+
+class FunSignature {
+	friend bool operator== (const FunSignature& a, const FunSignature& b) {return a.funName == b.funName && a.returnType == b.returnType && a.argTypes == b.argTypes;}
+	friend bool operator< (const FunSignature& a, const FunSignature& b) {return a.funName < b.funName || (a.funName == b.funName && (a.returnType < b.returnType || (a.returnType == b.returnType && a.argTypes < b.argTypes)));}
+	friend bool operator!= (const FunSignature& a, const FunSignature& b) {return !(a == b);}
+	friend bool operator> (const FunSignature& a, const FunSignature& b) {return b < a;}
+	friend bool operator>= (const FunSignature& a, const FunSignature& b) {return !(a < b);}
+	friend bool operator<= (const FunSignature& a, const FunSignature& b) {return !(a > b);}
+public:
 	std::string funName; // includes any type params needed (types not appearing in arguments)
 	TypeName returnType;
 	std::vector<TypeName> argTypes;
@@ -39,43 +78,88 @@ struct FunSignature {
 };
 }
 
-namespace _function {
-	/** Function transformed to take serial stream of args */
-	compile::LinkContext funSerialArgsDef (remote::Module module, std::string funName, remote::FunSignature funSig);
-	/** Function transformed to take serial stream of args and serialize output */
-	compile::LinkContext funSerialArgsOutDef (remote::Module module, std::string funName, remote::FunSignature funSig);
-}
-
-/** Macro to create a `Function` from single function reference. It expects function's module to be found at `functionName_module`. Use macro as first arg to `thunk` only; it expands to its first three arguments. If the function needs template arguments put them in second arg of FUNT without angle brackets. */
-#define FUN(functionName) functionName##_module, #functionName, &functionName
-#define FUNT(functionName,...) functionName##_module, #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), &functionName<__VA_ARGS__>
-#define MFUN(namespace_,functionName) namespace_::module, #namespace_ "::" #functionName, & namespace_::functionName
-#define MFUNT(namespace_,functionName,...) namespace_::module, #namespace_ "::" #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), & namespace_::functionName<__VA_ARGS__>
-
 #define FunSerialArgs(O) boost::function1< O, io::Code >
 typedef boost::function1< io::Code, io::Code > FunSerialArgsOut;
 
+/** Macro to create a `Function` from single function reference. It expects function's module to be found at `functionName_module`. Use macro as first arg to `thunk` only; it expands to its first three arguments. If the function needs template arguments put them in second arg of FUNT without angle brackets. */
+#define FUN(functionName) functionName##_module, #functionName, &functionName
+#define FUNT(functionName,...) functionName##_module + remote::joinMods (typeModules<__VA_ARGS__>()), #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), &functionName<__VA_ARGS__>
+#define MFUN(namespace_,functionName) namespace_::module, #namespace_ "::" #functionName, & namespace_::functionName
+#define MFUNT(namespace_,functionName,...) namespace_::module + remote::joinMods (typeModules<__VA_ARGS__>()), #namespace_ "::" #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), & namespace_::functionName<__VA_ARGS__>
+
 namespace remote {
 
-struct Function {
+class Function {
+	friend bool operator== (const Function& a, const Function& b) {return a.module == b.module && a.funSig == b.funSig;}
+	friend bool operator< (const Function& a, const Function& b) {return a.module < b.module || (a.module == b.module && a.funSig < b.funSig);}
+	friend bool operator!= (const Function& a, const Function& b) {return !(a == b);}
+	friend bool operator> (const Function& a, const Function& b) {return b < a;}
+	friend bool operator>= (const Function& a, const Function& b) {return !(a < b);}
+	friend bool operator<= (const Function& a, const Function& b) {return !(a > b);}
+public:
 	Module module;
 	FunSignature funSig;
 	Function (Module module, FunSignature funSig) : module(module), funSig(funSig) {}
 	Function () {} // for serialization
 	/** Return this function in its serialized args form. O type must match function return type */
-	template <class O> FunSerialArgs(O) funSerialArgs () {
-		assert (typeName<O>() == funSig.returnType);
-		compile::LinkContext ctx = _function::funSerialArgsDef (module, "serialArgsFun", funSig);
+	template <class O> FunSerialArgs(O) funSerialArgs ();
+	/** Return this function in its serialized args and output form */
+	FunSerialArgsOut funSerialArgsOut ();
+};
+
+}
+
+namespace _function {
+
+	/** Function transformed to take serial stream of args */
+	compile::LinkContext funSerialArgsDef (remote::Module module, std::string funName, remote::FunSignature funSig);
+	/** Function transformed to take serial stream of args and serialize output */
+	compile::LinkContext funSerialArgsOutDef (remote::Module module, std::string funName, remote::FunSignature funSig);
+
+	/** Cache of previously compiled funSerialArgs(Out) functions, so we don't recompile the same function every time */
+	extern std::map < remote::Function, boost::shared_ptr<void> > cacheO; // void is cast of FunSerialArgs(O)
+	extern std::map < remote::Function, boost::shared_ptr<FunSerialArgsOut> > cacheC;
+
+	/** Return this function in its serialized args form. O type must match function return type */
+	template <class O> FunSerialArgs(O) compile_funSerialArgs (remote::Function &fun) {
+		assert (typeName<O>() == fun.funSig.returnType);
+		compile::LinkContext ctx = _function::funSerialArgsDef (fun.module, "serialArgsFun", fun.funSig);
 		ctx.headers.push_back ("#include <boost/bind.hpp>");
 		return compile::eval<FunSerialArgs(O)> (ctx, "boost::bind (serialArgsFun, _1)");
 	}
+
 	/** Return this function in its serialized args and output form */
-	FunSerialArgsOut funSerialArgsOut () {
-		compile::LinkContext ctx = _function::funSerialArgsOutDef (module, "serialArgsOutFun", funSig);
+	inline FunSerialArgsOut compile_funSerialArgsOut (remote::Function &fun) {
+		compile::LinkContext ctx = _function::funSerialArgsOutDef (fun.module, "serialArgsOutFun", fun.funSig);
 		ctx.headers.push_back ("#include <boost/bind.hpp>");
 		return compile::eval<FunSerialArgsOut> (ctx, "boost::bind (serialArgsOutFun, _1)");
 	}
-};
+
+}
+
+namespace remote {
+
+/** Return this function in its serialized args form. O type must match function return type */
+template <class O> FunSerialArgs(O) Function::funSerialArgs () {
+	boost::shared_ptr<void> funPtr = _function::cacheO [*this];
+	if (!funPtr) {
+		FunSerialArgs(O) fun = _function::compile_funSerialArgs<O> (*this);
+		funPtr = boost::static_pointer_cast <void, FunSerialArgs(O)> (boost::shared_ptr<FunSerialArgs(O)> (new FunSerialArgs(O) (fun)));
+		_function::cacheO [*this] = funPtr;
+	}
+	return * boost::static_pointer_cast<FunSerialArgs(O)> (funPtr);
+}
+
+/** Return this function in its serialized args and output form */
+inline FunSerialArgsOut Function::funSerialArgsOut () {
+	boost::shared_ptr<FunSerialArgsOut> funPtr = _function::cacheC [*this];
+	if (!funPtr) {
+		FunSerialArgsOut fun = _function::compile_funSerialArgsOut (*this);
+		funPtr = boost::shared_ptr<FunSerialArgsOut> (new FunSerialArgsOut (fun));
+		_function::cacheC [*this] = funPtr;
+	}
+	return * funPtr;
+}
 
 /** Capture function and args to be evaluated later, possible on a different machine */
 template <class O> struct Thunk {
@@ -141,7 +225,7 @@ extern remote::Module composeAct2_module;
 /** Printing & Serialization */
 
 inline std::ostream& operator<< (std::ostream& out, const remote::Module &x) {
-	out << "Module " << x.libName << " " << x.headName;
+	out << "Module " << x.libNames << " " << x.headNames;
 	return out;
 }
 inline std::ostream& operator<< (std::ostream& out, const remote::FunSignature &x) {
@@ -169,8 +253,8 @@ inline std::ostream& operator<< (std::ostream& out, const remote::ThunkSerialOut
 namespace boost {namespace serialization {
 
 template <class Archive> void serialize (Archive & ar, remote::Module & x, const unsigned version) {
-	ar & x.libName;
-	ar & x.headName;
+	ar & x.libNames;
+	ar & x.headNames;
 }
 template <class Archive> void serialize (Archive & ar, remote::FunSignature & x, const unsigned version) {
 	ar & x.funName;
@@ -193,30 +277,34 @@ template <class Archive> void serialize (Archive & ar, remote::ThunkSerialOut & 
 }}
 
 template <class A> std::vector<TypeName> typeNames () {
-	std::vector<TypeName> list;
-	list.push_back (typeName<A>());
-	return list;
+	return items (typeName<A>());
 }
 template <class A, class B> std::vector<TypeName> typeNames () {
-	std::vector<TypeName> list;
-	list.push_back (typeName<A>());
-	list.push_back (typeName<B>());
-	return list;
+	return items (typeName<A>(), typeName<B>());
 }
 template <class A, class B, class C> std::vector<TypeName> typeNames () {
-	std::vector<TypeName> list;
-	list.push_back (typeName<A>());
-	list.push_back (typeName<B>());
-	list.push_back (typeName<C>());
-	return list;
+	return items (typeName<A>(), typeName<B>(), typeName<C>());
 }
 template <class A, class B, class C, class D> std::vector<TypeName> typeNames () {
-	std::vector<TypeName> list;
-	list.push_back (typeName<A>());
-	list.push_back (typeName<B>());
-	list.push_back (typeName<C>());
-	list.push_back (typeName<D>());
-	return list;
+	return items (typeName<A>(), typeName<B>(), typeName<C>(), typeName<D>());
 }
 
 std::string showTypeArgs (std::vector<TypeName> ts);
+
+/** Must specialize for each type */
+template <class T> remote::Module typeModule ();
+
+//template <> inline remote::Module typeModule<int> () {return remote::Module("int","int");}
+
+template <class A> std::vector<remote::Module> typeModules () {
+	return items (typeModule<A>());
+}
+template <class A, class B> std::vector<remote::Module> typeModules () {
+	return items (typeModule<A>(), typeModule<B>());
+}
+template <class A, class B, class C> std::vector<remote::Module> typeModules () {
+	return items (typeModule<A>(), typeModule<B>(), typeModule<C>());
+}
+template <class A, class B, class C, class D> std::vector<remote::Module> typeModules () {
+	return items (typeModule<A>(), typeModule<B>(), typeModule<C>(), typeModule<D>());
+}
