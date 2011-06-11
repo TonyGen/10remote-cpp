@@ -37,3 +37,15 @@ boost::function1 <void, thread::Thread> applyInterrupt ();
 boost::function1 <void, thread::Thread> applyJoin ();
 
 }
+
+template <> inline remote::Module typeModule<boost::thread> () {
+	return remote::Module ("boost_thread-mt", "boost/thread.hpp");
+}
+template <> inline remote::Module typeModule< remote::Ref<boost::thread> > () {
+	return remote::Module ("remote", "remote/ref.h") + typeModule<boost::thread>();
+}
+template <> inline remote::Module typeModule< boost::shared_ptr<boost::thread> > () {
+	remote::Module mod;
+	mod.headNames.push_back ("boost/shared_ptr.hpp"); // header only
+	return mod + typeModule<boost::thread>();
+}

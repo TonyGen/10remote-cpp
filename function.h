@@ -25,6 +25,7 @@ public:
 	std::vector<library::Libname> libNames; // library names with out lib prefix or suffix
 	std::vector<std::string> headNames;  // headers to include
 	Module (library::Libname libName, std::string headName) : libNames (items(libName)), headNames (items(headName)) {}
+	Module (std::vector<library::Libname> libNames, std::vector<std::string> headNames) : libNames(libNames), headNames(headNames) {}
 	Module () {}
 	Module operator+ (const Module &mod) {
 		Module newMod;
@@ -293,8 +294,7 @@ std::string showTypeArgs (std::vector<TypeName> ts);
 
 /** Must specialize for each type */
 template <class T> remote::Module typeModule ();
-
-//template <> inline remote::Module typeModule<int> () {return remote::Module("int","int");}
+//template <> inline remote::Module typeModule<int> () {return remote::Module("int","int.h");}
 
 template <class A> std::vector<remote::Module> typeModules () {
 	return items (typeModule<A>());

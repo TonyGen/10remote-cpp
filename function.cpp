@@ -63,10 +63,12 @@ std::map < remote::Function, boost::shared_ptr<FunSerialArgsOut> > _function::ca
 
 std::string showTypeArgs (std::vector<TypeName> ts) {
 	std::stringstream ss;
-	ss << "<";
-	for (unsigned i = 0; i < ts.size(); i ++)
-		if (i < ts.size() - 1) ss << ts[i] << ",";
-	ss << ">";
+	ss << "< ";
+	for (unsigned i = 0; i < ts.size(); i ++) {
+		ss << ts[i];
+		if (i < ts.size() - 1) ss << ", ";
+	}
+	ss << " >";
 	return ss.str();
 }
 

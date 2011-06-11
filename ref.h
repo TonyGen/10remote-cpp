@@ -85,19 +85,19 @@ extern remote::Module makeRef_module;
 
 /** Same as `remote::eval` except return remote reference to result. */
 template <class O> Ref<O> evalR (Host host, Thunk< boost::shared_ptr<O> > action) {
-	Thunk< Ref<O> > actToRef = remote::thunk (FUNT(composeAct0,Ref<O>,boost::shared_ptr<O>), remote::thunk (FUNT(remote::makeRef,O)), action);
+	Thunk< Ref<O> > actToRef = remote::thunk (FUNT(remote::composeAct0,Ref<O>,boost::shared_ptr<O>), remote::thunk (FUNT(remote::makeRef,O)), action);
 	return eval (host, actToRef);
 }
 
 /** Apply action to remote object. */
 template <class O, class T> O apply (Thunk< boost::function1< O, boost::shared_ptr<T> > > action, Ref<T> ref) {
-	Thunk<O> act = remote::thunk (FUNT(composeAct0,O,boost::shared_ptr<T>), action, remote::thunk (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
+	Thunk<O> act = remote::thunk (FUNT(remote::composeAct0,O,boost::shared_ptr<T>), action, remote::thunk (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
 	return remote::eval (ref.ref_->host, act);
 }
 
 /** Same as `apply` except return remote reference to result. */
 template <class O, class T> Ref<O> applyR (Thunk< boost::function1< boost::shared_ptr<O>, boost::shared_ptr<T> > > action, Ref<T> ref) {
-	Thunk< boost::shared_ptr<O> > act = remote::thunk (FUNT(composeAct0,boost::shared_ptr<O>,boost::shared_ptr<T>), action, thunk (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
+	Thunk< boost::shared_ptr<O> > act = remote::thunk (FUNT(remote::composeAct0,boost::shared_ptr<O>,boost::shared_ptr<T>), action, thunk (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
 	return remote::evalR (ref.ref_->host, act);
 }
 
