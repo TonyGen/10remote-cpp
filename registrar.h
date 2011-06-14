@@ -10,6 +10,7 @@
 #include <boost/shared_ptr.hpp>
 #include <10util/type.h>
 #include <10util/except.h>
+#include <stdint.h>
 
 namespace _registrar { // private
 
