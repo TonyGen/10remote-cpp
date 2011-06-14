@@ -2,6 +2,19 @@
 #include "function.h"
 #include <sstream>
 
+remote::ThunkSerialOut remote::BadThunk;
+
+io::Code remote::ThunkSerialOut::operator() () {
+	try {
+		return fun.funSerialArgsOut() (args);
+	} catch (std::exception &e) {
+		BadThunk = *this;
+		std::cerr << fun.funSig.funName << " : " << args.data << std::endl;
+		std::cerr << typeName(e) << ": " << e.what() << std::endl;
+		throw e;
+	}
+}
+
 /** Function transformed to take serial stream of args */
 compile::LinkContext _function::funSerialArgsDef (remote::Module module, std::string funName, remote::FunSignature funSig) {
 	compile::LinkContext ctx;
@@ -11,18 +24,21 @@ compile::LinkContext _function::funSerialArgsDef (remote::Module module, std::st
 	ctx.libNames.push_back ("boost_serialization-mt");
 	ctx.includePaths.push_back ("/opt/local/include");
 	ctx.headers.push_back ("#include <10util/io.h>");
+	ctx.headers.push_back ("#include <10util/except.h>");
 	ctx.headers.push_back ("#include <boost/archive/text_iarchive.hpp>");
 	ctx.headers.push_back ("#include <boost/serialization/utility.hpp>");
 	ctx.headers.push_back ("#include <boost/serialization/vector.hpp>");
 	ctx.headers.push_back ("#include <boost/serialization/variant.hpp>");
 	std::stringstream ss;
 	ss << funSig.returnType << " " << funName << " (io::Code args) {\n";
-	ss << "\tstd::stringstream ss (args.data);\n";
-	ss << "\tboost::archive::text_iarchive ar (ss);\n";
-	for (unsigned i = 0; i < funSig.argTypes.size(); i++) {
+	for (unsigned i = 0; i < funSig.argTypes.size(); i++)
 		ss << "\t" << funSig.argTypes[i] << " arg" << i << ";\n";
-		ss << "\tar >> arg" << i << ";\n";
-	}
+	ss << "\tstd::stringstream ss (args.data);\n";
+	ss << "\ttry {\n";
+	ss << "\t	boost::archive::text_iarchive ar (ss);\n";
+	for (unsigned i = 0; i < funSig.argTypes.size(); i++)
+		ss << "\t	ar >> arg" << i << ";\n";
+	ss << "\t} catch (std::exception &e) {except::raise (e);}\n";
 	ss << "\treturn " << funSig.funName << "(";
 	for (unsigned i = 0; i < funSig.argTypes.size(); i++) {
 		ss << "arg" << i;

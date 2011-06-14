@@ -43,5 +43,5 @@ call::Response call::call (io::IOStream stream, Request request) {
 	Either <Exception, Response> reply;
 	*stream >> reply;
 	if (boost::optional<Response> r = reply.mRight()) return *r;
-	else throw *reply.mLeft();
+	else except::raise (*reply.mLeft());
 }

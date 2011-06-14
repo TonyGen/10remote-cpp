@@ -168,32 +168,41 @@ template <class O> struct Thunk {
 	io::Code args;
 	Thunk (Function fun, io::Code args) : fun(fun), args(args) {}
 	Thunk () {} // for serialization
-	O operator() () {return fun.funSerialArgs<O>() (args);}
+	O operator() () {
+		try {
+			return fun.funSerialArgs<O>() (args);
+		} catch (std::exception &e) {
+			std::cerr << fun.funSig.funName << " : " << args.data << std::endl;
+			std::cerr << typeName(e) << ": " << e.what() << std::endl;
+			throw e;
+		}
+	}
 };
 
 template <class O> Thunk<O> thunk (Module module, std::string funName, O (*fun) ()) {
-	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code());}
+	std::stringstream ss; boost::archive::text_oarchive ar (ss); // just header expected
+	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code(ss.str()));}
 template <class O, class I> Thunk<O> thunk (Module module, std::string funName, O (*fun) (I), I arg1) {
 	std::stringstream ss; boost::archive::text_oarchive ar (ss);
-	ar << arg1;
+	io::write (ar, arg1);
 	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code (ss.str()));}
 template <class O, class I, class J> Thunk<O> thunk (Module module, std::string funName, O (*fun) (I, J), I arg1, J arg2) {
 	std::stringstream ss; boost::archive::text_oarchive ar (ss);
-	ar << arg1;
-	ar << arg2;
+	io::write (ar, arg1);
+	io::write (ar, arg2);
 	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code (ss.str()));}
 template <class O, class I, class J, class K> Thunk<O> thunk (Module module, std::string funName, O (*fun) (I, J, K), I arg1, J arg2, K arg3) {
 	std::stringstream ss; boost::archive::text_oarchive ar (ss);
-	ar << arg1;
-	ar << arg2;
-	ar << arg3;
+	io::write (ar, arg1);
+	io::write (ar, arg2);
+	io::write (ar, arg3);
 	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code (ss.str()));}
 template <class O, class I, class J, class K, class L> Thunk<O> thunk (Module module, std::string funName, O (*fun) (I, J, K, L), I arg1, J arg2, K arg3, L arg4) {
 	std::stringstream ss; boost::archive::text_oarchive ar (ss);
-	ar << arg1;
-	ar << arg2;
-	ar << arg3;
-	ar << arg4;
+	io::write (ar, arg1);
+	io::write (ar, arg2);
+	io::write (ar, arg3);
+	io::write (ar, arg4);
 	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code (ss.str()));}
 
 /** Same as Thunk<O> except output O is serialized */
@@ -202,8 +211,10 @@ struct ThunkSerialOut {
 	io::Code args;
 	template <class O> ThunkSerialOut (Thunk<O> x) : fun(x.fun), args(x.args) {}
 	ThunkSerialOut () {} // for serialization
-	io::Code operator() () {return fun.funSerialArgsOut() (args);}
+	io::Code operator() ();
 };
+
+extern ThunkSerialOut BadThunk;
 
 }
 

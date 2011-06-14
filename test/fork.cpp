@@ -21,7 +21,7 @@ static void echo (int pause, string req) {
 
 static void fork (remote::Host server, vector <string> args) {
 	string rest = concat (intersperse (string(" "), drop (1, args)));
-	rthread::Thread t = rthread::fork (server, thunk (FUN(echo), parse_string<int>(args[0]), rest));
+	remote::Thread t = remote::fork (server, remote::thunk (FUN(echo), parse_string<int>(args[0]), rest));
 }
 
 typedef map < string, boost::function2< void, remote::Host, vector <string> > > CommandTable;

@@ -1,7 +1,7 @@
 libname = 'remote'
 
 lib = SharedLibrary (libname, Glob('*.cpp'),
-	CCFLAGS = ['-g'],
+	CCFLAGS = ['-g', '-rdynamic'],
 	CPPPATH = ['.', '/opt/local/include'],
 	LIBPATH = ['/opt/local/lib'],
 	LIBS = Split ('10util boost_thread-mt boost_serialization-mt') )

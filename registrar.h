@@ -9,6 +9,7 @@
 #include <typeinfo>
 #include <boost/shared_ptr.hpp>
 #include <10util/type.h>
+#include <10util/except.h>
 
 namespace _registrar { // private
 
@@ -43,10 +44,14 @@ namespace registrar {
 			return p ? p->object : boost::shared_ptr<T>();
 		}
 		T* operator-> () {
-			return deref().get();
+			boost::shared_ptr<T> ptr = deref();
+			if (ptr) return ptr.get();
+			else except::raise (std::runtime_error ("dangling ref"));
 		}
 		T& operator* () {
-			return *deref();
+			boost::shared_ptr<T> ptr = deref();
+			if (ptr) return *ptr;
+			else except::raise (std::runtime_error ("dangling ref"));
 		}
 		boost::shared_ptr<T> remove() {
 			// TODO: speed up using find and iterator remove
