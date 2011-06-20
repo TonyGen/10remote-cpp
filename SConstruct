@@ -1,4 +1,4 @@
-libname = 'remote'
+libname = '10remote'
 
 lib = SharedLibrary (libname, Glob('*.cpp'),
 	CCFLAGS = ['-g', '-rdynamic'],

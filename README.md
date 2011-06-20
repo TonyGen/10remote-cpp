@@ -4,13 +4,13 @@ Install dependent library first
 
 Download and remove '-ccp' suffix
 
-	git clone git://github.com/TonyGen/remote-cpp.git remote
-	cd remote
+	git clone git://github.com/TonyGen/10remote-cpp.git 10remote
+	cd 10remote
 
-Build library `libremote.so`
+Build library `lib10remote.so`
 
 	scons
 
-Install library in `/usr/local/lib` and header files in `/usr/local/include/remote`
+Install library in `/usr/local/lib` and header files in `/usr/local/include/10remote`
 
 	sudo scons install
