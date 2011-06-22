@@ -82,12 +82,6 @@ public:
 #define FunSerialArgs(O) boost::function1< O, io::Code >
 typedef boost::function1< io::Code, io::Code > FunSerialArgsOut;
 
-/** Macro to create a `Function` from single function reference. It expects function's module to be found at `functionName_module`. Use macro as first arg to `thunk` only; it expands to its first three arguments. If the function needs template arguments put them in second arg of FUNT without angle brackets. */
-#define FUN(functionName) functionName##_module, #functionName, &functionName
-#define FUNT(functionName,...) functionName##_module + remote::joinMods (typeModules<__VA_ARGS__>()), #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), &functionName<__VA_ARGS__>
-#define MFUN(namespace_,functionName) namespace_::module, #namespace_ "::" #functionName, & namespace_::functionName
-#define MFUNT(namespace_,functionName,...) namespace_::module + remote::joinMods (typeModules<__VA_ARGS__>()), #namespace_ "::" #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), & namespace_::functionName<__VA_ARGS__>
-
 namespace remote {
 
 class Function {
@@ -108,7 +102,33 @@ public:
 	FunSerialArgsOut funSerialArgsOut ();
 };
 
+template <class O> struct Function0 {Function fun; Function0 (Function fun) : fun(fun) {}};
+template <class O, class I> struct Function1 {Function fun; Function1 (Function fun) : fun(fun) {}};
+template <class O, class I, class J> struct Function2 {Function fun; Function2 (Function fun) : fun(fun) {}};
+template <class O, class I, class J, class K> struct Function3 {Function fun; Function3 (Function fun) : fun(fun) {}};
+template <class O, class I, class J, class K, class L> struct Function4 {Function fun; Function4 (Function fun) : fun(fun) {}};
+
+/** Construct FunctionN where N is determined by type of function supplied */
+template <class O> Function0<O> fun (Module module, std::string funName, O (*fun) ()) {
+	return Function0<O> (Function (module, FunSignature (funName, fun)));}
+template <class O, class I> Function1<O,I> fun (Module module, std::string funName, O (*fun) (I)) {
+	return Function1<O,I> (Function (module, FunSignature (funName, fun)));}
+template <class O, class I, class J> Function2<O,I,J> fun (Module module, std::string funName, O (*fun) (I,J)) {
+	return Function2<O,I,J> (Function (module, FunSignature (funName, fun)));}
+template <class O, class I, class J, class K> Function3<O,I,J,K> fun (Module module, std::string funName, O (*fun) (I,J,K)) {
+	return Function3<O,I,J,K> (Function (module, FunSignature (funName, fun)));}
+template <class O, class I, class J, class K, class L> Function4<O,I,J,K,L> fun (Module module, std::string funName, O (*fun) (I,J,K,L)) {
+	return Function4<O,I,J,K,L> (Function (module, FunSignature (funName, fun)));}
+
 }
+
+/** Macro to construct a FunctionN from a single function reference. It expects function's module to be found at `functionName_module`. If the function needs template arguments put them in second arg of FUNT without angle brackets. */
+#define FUN(functionName) remote::fun (functionName##_module, #functionName, &functionName)
+#define FUNT(functionName,...) remote::fun (functionName##_module + remote::joinMods (typeModules<__VA_ARGS__>()), #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), &functionName<__VA_ARGS__>)
+
+/** Same as FUN & FUNT except namespace is supplied separately and module is expected to be found at 'namespace::module'. */
+#define MFUN(namespace_,functionName) remote::fun (namespace_::module, #namespace_ "::" #functionName, & namespace_::functionName)
+#define MFUNT(namespace_,functionName,...) remote::fun (namespace_::module + remote::joinMods (typeModules<__VA_ARGS__>()), #namespace_ "::" #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), & namespace_::functionName<__VA_ARGS__>)
 
 namespace _function {
 
@@ -179,31 +199,37 @@ template <class O> struct Thunk {
 	}
 };
 
-template <class O> Thunk<O> thunk (Module module, std::string funName, O (*fun) ()) {
+/** Construct Thunk from typed function and typed arguments */
+template <class O> Thunk<O> thunk (Function0<O> fun) {
 	std::stringstream ss; boost::archive::text_oarchive ar (ss); // just header expected
-	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code(ss.str()));}
-template <class O, class I> Thunk<O> thunk (Module module, std::string funName, O (*fun) (I), I arg1) {
+	return Thunk<O> (fun.fun, io::Code(ss.str()));
+}
+template <class O, class I> Thunk<O> thunk (Function1<O,I> fun, I arg1) {
 	std::stringstream ss; boost::archive::text_oarchive ar (ss);
 	io::write (ar, arg1);
-	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code (ss.str()));}
-template <class O, class I, class J> Thunk<O> thunk (Module module, std::string funName, O (*fun) (I, J), I arg1, J arg2) {
+	return Thunk<O> (fun.fun, io::Code (ss.str()));
+}
+template <class O, class I, class J> Thunk<O> thunk (Function2<O,I,J> fun, I arg1, J arg2) {
 	std::stringstream ss; boost::archive::text_oarchive ar (ss);
 	io::write (ar, arg1);
 	io::write (ar, arg2);
-	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code (ss.str()));}
-template <class O, class I, class J, class K> Thunk<O> thunk (Module module, std::string funName, O (*fun) (I, J, K), I arg1, J arg2, K arg3) {
+	return Thunk<O> (fun.fun, io::Code (ss.str()));
+}
+template <class O, class I, class J, class K> Thunk<O> thunk (Function3<O,I,J,K> fun, I arg1, J arg2, K arg3) {
 	std::stringstream ss; boost::archive::text_oarchive ar (ss);
 	io::write (ar, arg1);
 	io::write (ar, arg2);
 	io::write (ar, arg3);
-	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code (ss.str()));}
-template <class O, class I, class J, class K, class L> Thunk<O> thunk (Module module, std::string funName, O (*fun) (I, J, K, L), I arg1, J arg2, K arg3, L arg4) {
+	return Thunk<O> (fun.fun, io::Code (ss.str()));
+}
+template <class O, class I, class J, class K, class L> Thunk<O> thunk (Function4<O,I,J,K,L> fun, I arg1, J arg2, K arg3, L arg4) {
 	std::stringstream ss; boost::archive::text_oarchive ar (ss);
 	io::write (ar, arg1);
 	io::write (ar, arg2);
 	io::write (ar, arg3);
 	io::write (ar, arg4);
-	return Thunk<O> (Function (module, FunSignature (funName, fun)), io::Code (ss.str()));}
+	return Thunk<O> (fun.fun, io::Code (ss.str()));
+}
 
 /** Same as Thunk<O> except output O is serialized */
 struct ThunkSerialOut {
@@ -214,6 +240,7 @@ struct ThunkSerialOut {
 	io::Code operator() ();
 };
 
+/** Last thunk that failed. Useful for debugging */
 extern ThunkSerialOut BadThunk;
 
 }

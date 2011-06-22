@@ -2,6 +2,7 @@
 #include "function.h"
 #include <sstream>
 
+/** Last thunk that failed. Useful for debugging */
 remote::ThunkSerialOut remote::BadThunk;
 
 io::Code remote::ThunkSerialOut::operator() () {
