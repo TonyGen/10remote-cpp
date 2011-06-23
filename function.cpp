@@ -2,48 +2,28 @@
 #include "function.h"
 #include <sstream>
 
-/** Last thunk that failed. Useful for debugging */
-remote::ThunkSerialOut remote::BadThunk;
-
-io::Code remote::ThunkSerialOut::operator() () {
-	try {
-		return fun.funSerialArgsOut() (args);
-	} catch (std::exception &e) {
-		BadThunk = *this;
-		std::cerr << fun.funSig.funName << " : " << args.data << std::endl;
-		std::cerr << typeName(e) << ": " << e.what() << std::endl;
-		throw e;
-	}
-}
-
-/** Function transformed to take serial stream of args */
-compile::LinkContext _function::funSerialArgsDef (remote::Module module, std::string funName, remote::FunSignature funSig) {
-	compile::LinkContext ctx;
-	push_all (ctx.libNames, module.libNames);
-	push_all (ctx.headers, module.includeLines());
+/** Function transformed to take first Z-N args encoded, where Z is num total args */
+compile::LinkContext _function::defFunction (unsigned N, remote::Module ctx, std::string funName, remote::FunSignature funSig) {
 	ctx.libPaths.push_back ("/opt/local/lib");
-	ctx.libNames.push_back ("boost_serialization-mt");
 	ctx.includePaths.push_back ("/opt/local/include");
+	ctx.libNames.push_back ("boost_serialization-mt");
 	ctx.headers.push_back ("#include <10util/io.h>");
-	ctx.headers.push_back ("#include <10util/except.h>");
-	ctx.headers.push_back ("#include <boost/archive/text_iarchive.hpp>");
-	ctx.headers.push_back ("#include <boost/serialization/utility.hpp>");
-	ctx.headers.push_back ("#include <boost/serialization/vector.hpp>");
-	ctx.headers.push_back ("#include <boost/serialization/variant.hpp>");
+	ctx.headers.push_back ("#include <cassert>");
 	std::stringstream ss;
-	ss << funSig.returnType << " " << funName << " (io::Code args) {\n";
-	for (unsigned i = 0; i < funSig.argTypes.size(); i++)
-		ss << "\t" << funSig.argTypes[i] << " arg" << i << ";\n";
-	ss << "\tstd::stringstream ss (args.data);\n";
-	ss << "\ttry {\n";
-	ss << "\t	boost::archive::text_iarchive ar (ss);\n";
-	for (unsigned i = 0; i < funSig.argTypes.size(); i++)
-		ss << "\t	ar >> arg" << i << ";\n";
-	ss << "\t} catch (std::exception &e) {except::raise (e);}\n";
+	unsigned Z = funSig.argTypes.size();
+	ss << funSig.returnType << " " << funName << " (std::vector<io::Code> args";
+	for (unsigned i = Z-N; i < Z; i++) {
+		ss << funSig.argTypes[i] << " arg" << i;
+		if (i < Z-1) ss << ", ";
+	}
+	ss << ") {\n";
+	ss << "\tassert (args.size() == " << Z-N << ");\n";
+	for (unsigned i = 0; i < Z-N; i++)
+		ss << "\t" << funSig.argTypes[i] << " arg" << i << " = io::decode<" << funSig.argTypes[i] << "> (args[" << i << "]);\n";
 	ss << "\treturn " << funSig.funName << "(";
-	for (unsigned i = 0; i < funSig.argTypes.size(); i++) {
+	for (unsigned i = 0; i < Z; i++) {
 		ss << "arg" << i;
-		if (i < funSig.argTypes.size() - 1) ss << ", ";
+		if (i < Z-1) ss << ", ";
 	}
 	ss << ");\n";
 	ss << "}\n";
@@ -52,30 +32,30 @@ compile::LinkContext _function::funSerialArgsDef (remote::Module module, std::st
 }
 
 /** Function transformed to take serial stream of args and serialize output */
-compile::LinkContext _function::funSerialArgsOutDef (remote::Module module, std::string funName, remote::FunSignature funSig) {
-	compile::LinkContext ctx = funSerialArgsDef (module, "x_" + funName, funSig);
-	ctx.headers.push_back ("#include <boost/archive/text_oarchive.hpp>");
+compile::LinkContext _function::defFunction0c (remote::Module module, std::string funName, remote::FunSignature funSig) {
+	compile::LinkContext ctx = defFunction (0, module, "x_" + funName, funSig);
 	ctx.headers.push_back ("#include <10util/unit.h>");
 	std::stringstream ss;
-	ss << "io::Code " << funName << " (io::Code args) {\n";
+	ss << "io::Code " << funName << " (std::vector<io::Code> args) {\n";
 	if (funSig.returnType == "void") {
 		ss << "\tx_" << funName << " (args);\n";
 		ss << "\tUnit result = unit;\n";
 	} else {
 		ss << "\t" << funSig.returnType << " result = x_" << funName << " (args);\n";
 	}
-	ss << "\tstd::stringstream ss;\n";
-	ss << "\tboost::archive::text_oarchive ar (ss);\n";
-	ss << "\tar << result;\n";
-	ss << "\treturn io::Code (ss.str());\n";
+	ss << "\treturn io::encode (result);\n";
 	ss << "}\n";
 	ctx.headers.push_back (ss.str());
 	return ctx;
 }
 
-/** Cache of previously compiled funSerialArgs(Out) functions, so we don't recompile the same function every time */
-std::map < remote::Function, boost::shared_ptr<void> > _function::cacheO; // void is cast of FunSerialArgs(O)
-std::map < remote::Function, boost::shared_ptr<FunSerialArgsOut> > _function::cacheC;
+/** Cache of previously compiled functions for getFunctionN, so we don't recompile the same function every time */
+std::map < remote::FunctionId, boost::shared_ptr<void> > _function::cache0; // void is cast of boost::function1<O,io::Code>
+std::map < remote::FunctionId, boost::shared_ptr<void> > _function::cache1; // void is cast of boost::function1<O,io::Code,I>
+std::map < remote::FunctionId, boost::shared_ptr<void> > _function::cache2; // void is cast of boost::function1<O,io::Code,I,J>
+std::map < remote::FunctionId, boost::shared_ptr<void> > _function::cache3; // void is cast of boost::function1<O,io::Code,I,J,K>
+std::map < remote::FunctionId, boost::shared_ptr<void> > _function::cache4; // void is cast of boost::function1<O,io::Code,I,J,K,L>
+std::map < remote::FunctionId, boost::shared_ptr< boost::function1<io::Code,std::vector<io::Code> > > > _function::cache0c; // for getFunction0c
 
 
 std::string showTypeArgs (std::vector<TypeName> ts) {

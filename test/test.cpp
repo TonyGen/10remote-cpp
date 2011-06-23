@@ -1,10 +1,10 @@
 /* Assumes util and remote library has been built and installed in /usr/local/include and /usr/local/lib.
- * Compile as: g++ test.cpp -o test -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -lremote
+ * Compile as: g++ test.cpp -o test -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -l10remote
  * Run as: `test` */
 
 #include <iostream>
 #include <10util/util.h>
-#include <remote/thunk.h>
+#include <10remote/function.h>
 #include <boost/variant.hpp>
 
 using namespace std;
@@ -17,13 +17,16 @@ std::ostream& operator<< (std::ostream& out, const Foo &x) {out << x.x; return o
 std::istream& operator>> (std::istream& in, Foo &x) {in >> x.x; return in;}
 
 static int hello (string arg) {return 1;}
-static Unit goodbye (unsigned arg, string arg2) {return unit;}
+static void goodbye (unsigned arg, string arg2) {}
+
+const remote::Module hello_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("test.cpp"));
+const remote::Module goodbye_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("test.cpp"));
 
 int main (int argc, const char* argv[]) {
-	Thunk<int> x = thunk (FUN(hello), string("world"));
-	cout << x.funKey << endl;
-	Thunk<Unit> y = thunk (FUN(goodbye), (unsigned)1, string("world"));
-	cout << y.funKey << endl;
+	remote::Function0<int> x = remote::bind (FUN(hello), string("world"));
+	cout << x << endl;
+	remote::Function0<void> y = remote::bind (FUN(goodbye), (unsigned)1, string("world"));
+	cout << y << endl;
 	boost::variant< int, Foo > z;
 	Foo f;
 	cin >> f;

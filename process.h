@@ -32,18 +32,6 @@ namespace remote {
 
 }
 
-namespace _rprocess {
-
-extern remote::Module module;
-process::Process launch (program::Program program);
-boost::function1 <void, process::Process> applyRestart ();
-boost::function1 <int, process::Process> applyWaitFor ();
-boost::function1 <void, process::Process> applySignal (process::Signal s);
-boost::function1 <void, process::Process> applyTerminate ();
-boost::function1 <program::Program, process::Process> applyGetProgram ();
-
-}
-
 template <> inline remote::Module typeModule<program::Program> () {
 	return remote::Module ("10util", "10util/program.h");
 }
@@ -55,6 +43,6 @@ template <> inline remote::Module typeModule< remote::Ref<process::Process_> > (
 }
 template <> inline remote::Module typeModule< boost::shared_ptr<process::Process_> > () {
 	remote::Module mod;
-	mod.headNames.push_back ("boost/shared_ptr.hpp"); // header only
+	mod.headers.push_back ("#include <boost/shared_ptr.hpp>"); // header only
 	return mod + typeModule<process::Process_>();
 }

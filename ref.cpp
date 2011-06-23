@@ -3,4 +3,4 @@
 
 remote::Module _remoteref::module (items<std::string>("remote", "boost_thread-mt"), items<std::string>("remote/ref.h"));
 
-remote::Module remote::makeRef_module = _remoteref::module;
+remote::Module remote::ref_module = _remoteref::module;

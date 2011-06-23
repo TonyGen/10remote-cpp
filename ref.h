@@ -4,7 +4,7 @@
 #pragma once
 
 #include <boost/serialization/split_free.hpp>
-#include <boost/functional/value_factory.hpp>
+//#include <boost/functional/value_factory.hpp>
 #include <10util/unit.h>
 #include "registrar.h"
 #include "remote.h"
@@ -53,11 +53,11 @@ public:
 		host (remote::thisHost()),
 		localRef (registrar::add (boost::shared_ptr< Record<T> > (new Record<T> (1, object)))) {}
 	Ref_ (remote::Host host, registrar::Ref< Record<T> > localRef) : host(host), localRef(localRef) {
-		remote::eval (host, remote::thunk (MFUNT(_remoteref,incrementRef,T), localRef));
+		remote::eval (host, remote::bind (MFUNT(_remoteref,incrementRef,T), localRef));
 	}
 	~Ref_ () {
 		try {
-			remote::eval (host, remote::thunk (MFUNT(_remoteref,decrementRef,T), localRef));
+			remote::eval (host, remote::bind (MFUNT(_remoteref,decrementRef,T), localRef));
 		} catch (std::exception &e) {
 			std::cerr << "~Ref<" << typeName<T>() << ">: (" << typeName(e) << ") " << e.what() << std::endl;
 		}
@@ -77,28 +77,28 @@ public: // private to this file
 	Ref () {} // for serialization
 // public to outside this file
 	Ref (boost::shared_ptr<T> object) : ref_ (boost::shared_ptr <_remoteref::Ref_<T> > (new _remoteref::Ref_<T> (object))) {}
-	remote::Host host() {return ref_->host;}
+	Host host() {return ref_->host;}
 };
 
-template <class T> boost::function1< Ref<T>, boost::shared_ptr<T> > makeRef () {return boost::value_factory< Ref<T> >();}
-extern remote::Module makeRef_module;
+template <class T> Ref<T> ref (boost::shared_ptr<T> object) {return Ref<T> (object);}
+
+extern Module ref_module;
 
 /** Same as `remote::eval` except return remote reference to result. */
-template <class O> Ref<O> evalR (Host host, Thunk< boost::shared_ptr<O> > action) {
-	Thunk< Ref<O> > actToRef = remote::thunk (FUNT(remote::composeAct0,Ref<O>,boost::shared_ptr<O>), remote::thunk (FUNT(remote::makeRef,O)), action);
-	return eval (host, actToRef);
+template <class O> Ref<O> evalR (Host host, Function0< boost::shared_ptr<O> > action) {
+	return eval (host, bind (FUNT(remote::composeAct0,remote::Ref<O>,boost::shared_ptr<O>), FUNT(remote::ref,O), action));
 }
 
 /** Apply action to remote object. */
-template <class O, class T> O apply (Thunk< boost::function1< O, boost::shared_ptr<T> > > action, Ref<T> ref) {
-	Thunk<O> act = remote::thunk (FUNT(remote::composeAct0,O,boost::shared_ptr<T>), action, remote::thunk (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
-	return remote::eval (ref.ref_->host, act);
+template <class O, class T> O apply (Function1< O, boost::shared_ptr<T> > action, Ref<T> ref) {
+	Function0<O> act = bind (FUNT(remote::composeAct0,O,boost::shared_ptr<T>), action, bind (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
+	return eval (ref.ref_->host, act);
 }
 
 /** Same as `apply` except return remote reference to result. */
-template <class O, class T> Ref<O> applyR (Thunk< boost::function1< boost::shared_ptr<O>, boost::shared_ptr<T> > > action, Ref<T> ref) {
-	Thunk< boost::shared_ptr<O> > act = remote::thunk (FUNT(remote::composeAct0,boost::shared_ptr<O>,boost::shared_ptr<T>), action, thunk (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
-	return remote::evalR (ref.ref_->host, act);
+template <class O, class T> Ref<O> applyR (Function1< boost::shared_ptr<O>, boost::shared_ptr<T> > action, Ref<T> ref) {
+	Function0< boost::shared_ptr<O> > act = bind (FUNT(remote::composeAct0,boost::shared_ptr<O>,boost::shared_ptr<T>), action, bind (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
+	return evalR (ref.ref_->host, act);
 }
 
 }

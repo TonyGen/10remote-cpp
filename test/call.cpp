@@ -1,12 +1,12 @@
 /* Echo client and server */
 /* Assumes util and remote library has been built and installed in /usr/local/include and /usr/local/lib.
- * Compile as: g++ call.cpp -o call -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -lremote
+ * Compile as: g++ call.cpp -o call -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -l10remote
  * Run as: `call server <port>` and `call client <hostname> <port> <message>` */
 
 #include <iostream>
 #include <10util/util.h>
 #include <10util/network.h>
-#include <remote/call.h>
+#include <10remote/call.h>
 
 using namespace std;
 

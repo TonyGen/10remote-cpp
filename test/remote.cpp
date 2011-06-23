@@ -1,12 +1,12 @@
 /* Echo client and server */
 /* Assumes util and remote library has been built and installed in /usr/local/include and /usr/local/lib.
- * Compile as: g++ remote.cpp -o remote -I/opt/local/include -L/opt/local/lib -lremote -l10util -lboost_system -lboost_thread -lboost_serialization
+ * Compile as: g++ remote.cpp -o remote -I/opt/local/include -L/opt/local/lib -l10remote -l10util -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt
  * Run as: `remote server <port>` and `remote client <hostname>:<port>` */
 
 #include <iostream>
 #include <utility>
 #include <10util/util.h>
-#include <remote/remote.h>
+#include <10remote/remote.h>
 
 using namespace std;
 
@@ -15,12 +15,14 @@ static string echo (string req) {
 	return req;
 }
 
+const remote::Module echo_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("remote.cpp"));
+
 void mainClient (remote::Host server) {
 	string line;
 	while (getline (cin, line)) {
 		try {
 			cout << "connect to " << remote::hostPort (server) << endl;
-			string reply = remote::eval (server, thunk (FUN(echo), line));
+			string reply = remote::eval (server, remote::bind (FUN(echo), line));
 			cout << reply << endl;
 		} catch (std::exception &e) {
 			cerr << e.what() << endl;
@@ -29,9 +31,8 @@ void mainClient (remote::Host server) {
 }
 
 void mainServer (unsigned short localPort) {
-	registerFun (FUN(echo));
 	cout << "listen on " << localPort << endl;
-	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
+	boost::shared_ptr <boost::thread> t = remote::listen ("localhost:" + to_string(localPort));
 	t->join();  // wait forever
 }
 

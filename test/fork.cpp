@@ -1,6 +1,6 @@
 /* Fork thread on server */
 /* Assumes util and remote library has been built and installed in /usr/local/include and /usr/local/lib.
- * Compile as: g++ fork.cpp -o fork -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -lremote
+ * Compile as: g++ fork.cpp -o fork -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -l10remote
  * Run as: `echo server <port>` and `echo client <hostname>:<port> <pause>` */
 
 #include <iostream>
@@ -9,8 +9,8 @@
 #include <map>
 #include <10util/vector.h>
 #include <10util/thread.h>
-#include <remote/remote.h>
-#include <remote/thread.h>
+#include <10remote/remote.h>
+#include <10remote/thread.h>
 
 using namespace std;
 
@@ -19,9 +19,11 @@ static void echo (int pause, string req) {
 	cout << req << endl;
 }
 
+const remote::Module echo_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("fork.cpp"));
+
 static void fork (remote::Host server, vector <string> args) {
 	string rest = concat (intersperse (string(" "), drop (1, args)));
-	remote::Thread t = remote::fork (server, remote::thunk (FUN(echo), parse_string<int>(args[0]), rest));
+	remote::Thread t = remote::fork (server, remote::bind (FUN(echo), parse_string<int>(args[0]), rest));
 }
 
 typedef map < string, boost::function2< void, remote::Host, vector <string> > > CommandTable;
@@ -56,9 +58,8 @@ void mainClient (remote::Host server) {
 }
 
 void mainServer (unsigned short localPort) {
-	registerFunF (FUN(echo));
 	cout << "listen on " << localPort << endl;
-	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
+	boost::shared_ptr <boost::thread> t = remote::listen ("localhost:" + to_string(localPort));
 	t->join();  // wait forever
 }
 

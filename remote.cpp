@@ -19,9 +19,8 @@ remote::Host remote::thisHost () {
 }
 
 /** Request is an encoded ThunkSerialOut, Response is an io::Code */
-static io::Code reply (io::Code thunkCode) {
-	remote::ThunkSerialOut thunk = io::decode<remote::ThunkSerialOut> (thunkCode);
-	return thunk ();
+static io::Code reply (io::Code closure) {
+	return io::decode<remote::Closure> (closure) ();
 }
 
 /** Start thread that will accept `remote::eval` requests from the network */

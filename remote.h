@@ -25,12 +25,12 @@ namespace remote {
 	boost::shared_ptr <boost::thread> listen (remote::Host myHost);
 
 	/** Execute action on given host, wait for its completion, and return its result */
-	template <class O> O eval (Host host, Thunk<O> action) {
-		io::Code result = call::call (hostPort (host), io::encode (ThunkSerialOut (action)));
+	template <class O> O eval (Host host, Function0<O> action) {
+		io::Code result = call::call (hostPort (host), io::encode (action.closure));
 		return io::decode<O> (result);
 	}
-	template <> inline void eval<void> (Host host, Thunk<void> action) {
-		call::call (hostPort (host), io::encode (ThunkSerialOut (action)));
+	template <> inline void eval<void> (Host host, Function0<void> action) {
+		call::call (hostPort (host), io::encode (action.closure));
 	}
 
 	/** Return public hostname of this machine with port we are listening on */

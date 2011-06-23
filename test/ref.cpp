@@ -1,6 +1,6 @@
 /* Echo client and server
    Compile as:
-     g++ ref.cpp -o ref -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -lremote
+     g++ ref.cpp -o ref -I/opt/local/include -L/opt/local/lib -lboost_system-mt -lboost_thread-mt -lboost_serialization-mt -l10util -l10remote
    Run as:
      network server <port>
      network client <host>:<port> <message> */
@@ -8,8 +8,8 @@
 #include <iostream>
 #include <utility>
 #include <10util/util.h>
-#include <remote/remote.h>
-#include <remote/ref.h>
+#include <10remote/remote.h>
+#include <10remote/ref.h>
 
 using namespace std;
 
@@ -18,27 +18,27 @@ struct Resource {
 	~Resource () {cout << "Destroyed resource with value: " << value << endl;}
 };
 
-static boost::shared_ptr<Resource> _setValue (string value, boost::shared_ptr<Resource> res) {
+static boost::shared_ptr<Resource> setValue (string value, boost::shared_ptr<Resource> res) {
 	res->value = value;
 	cout << value << endl;
 	return res;
 }
-static boost::function1< boost::shared_ptr<Resource>, boost::shared_ptr<Resource> > setValue (string value) {
-	return boost::bind (_setValue, value, _1);
+
+static boost::shared_ptr<Resource> newResource () {
+	return boost::shared_ptr<Resource> (new Resource);
 }
 
-static remote::Ref<Resource> newResource () {
-	return remote::Ref<Resource> (boost::shared_ptr<Resource> (new Resource));
-}
+const remote::Module setValue_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("ref.cpp"));
+const remote::Module newResource_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("ref.cpp"));
 
 void mainClient (remote::Host server) {
 	cout << "connect to " << remote::hostPort (server) << endl;
-	remote::Ref<Resource> ref = remote::eval (server, thunk (FUN(newResource)));
+	remote::Ref<Resource> ref = remote::evalR (server, FUN(newResource));
 	string line;
 	while (getline (cin, line)) {
 		try {
-			remote::Ref<Resource> reply = remote::apply_ (thunk (FUN(setValue), line), ref);
-			//cout << reply << endl;
+			remote::Ref<Resource> reply = remote::applyR (remote::bind (FUN(setValue), line), ref);
+			cout << reply << endl;
 		} catch (std::exception &e) {
 			cerr << e.what() << endl;
 		}
@@ -46,11 +46,8 @@ void mainClient (remote::Host server) {
 }
 
 void mainServer (unsigned short localPort) {
-	registerFun (FUN(newResource));
-	registerFunF (FUN(setValue));
-	remote::registerApply_<Resource,Resource>();
 	cout << "listen on " << localPort << endl;
-	boost::shared_ptr <boost::thread> t = remote::listen (localPort);
+	boost::shared_ptr <boost::thread> t = remote::listen ("localhost:" + to_string(localPort));
 	t->join();  // wait forever
 }
 
