@@ -2,8 +2,13 @@
 #include "function.h"
 #include <sstream>
 
+static module::Module mod (items<std::string>("10remote", "10util"), "10remote/function.h");
+
+template <> module::Module type1<remote::Function0>::module = mod;
+
 /** Function transformed to take first Z-N args encoded, where Z is num total args */
-compile::LinkContext _function::defFunction (unsigned N, remote::Module ctx, std::string funName, remote::FunSignature funSig) {
+compile::LinkContext _function::defFunction (unsigned N, module::Module mod, std::string funName, remote::FunSignature funSig) {
+	compile::LinkContext ctx (mod);
 	ctx.libPaths.push_back ("/opt/local/lib");
 	ctx.includePaths.push_back ("/opt/local/include");
 	ctx.libNames.push_back ("boost_serialization-mt");
@@ -12,15 +17,13 @@ compile::LinkContext _function::defFunction (unsigned N, remote::Module ctx, std
 	std::stringstream ss;
 	unsigned Z = funSig.argTypes.size();
 	ss << funSig.returnType << " " << funName << " (std::vector<io::Code> args";
-	for (unsigned i = Z-N; i < Z; i++) {
-		ss << funSig.argTypes[i] << " arg" << i;
-		if (i < Z-1) ss << ", ";
-	}
+	for (unsigned i = Z-N; i < Z; i++)
+		ss << ", " << funSig.argTypes[i] << " arg" << i;
 	ss << ") {\n";
 	ss << "\tassert (args.size() == " << Z-N << ");\n";
 	for (unsigned i = 0; i < Z-N; i++)
-		ss << "\t" << funSig.argTypes[i] << " arg" << i << " = io::decode<" << funSig.argTypes[i] << "> (args[" << i << "]);\n";
-	ss << "\treturn " << funSig.funName << "(";
+		ss << "\t" << funSig.argTypes[i] << " arg" << i << " = io::decode< " << funSig.argTypes[i] << " > (args[" << i << "]);\n";
+	ss << "\treturn " << funSig.funName << " (";
 	for (unsigned i = 0; i < Z; i++) {
 		ss << "arg" << i;
 		if (i < Z-1) ss << ", ";
@@ -32,7 +35,7 @@ compile::LinkContext _function::defFunction (unsigned N, remote::Module ctx, std
 }
 
 /** Function transformed to take serial stream of args and serialize output */
-compile::LinkContext _function::defFunction0c (remote::Module module, std::string funName, remote::FunSignature funSig) {
+compile::LinkContext _function::defFunction0c (module::Module module, std::string funName, remote::FunSignature funSig) {
 	compile::LinkContext ctx = defFunction (0, module, "x_" + funName, funSig);
 	ctx.headers.push_back ("#include <10util/unit.h>");
 	std::stringstream ss;
@@ -57,8 +60,6 @@ std::map < remote::FunctionId, boost::shared_ptr<void> > _function::cache3; // v
 std::map < remote::FunctionId, boost::shared_ptr<void> > _function::cache4; // void is cast of boost::function1<O,io::Code,I,J,K,L>
 std::map < remote::FunctionId, boost::shared_ptr< boost::function1<io::Code,std::vector<io::Code> > > > _function::cache0c; // for getFunction0c
 
-static remote::Module module ("remote", "remote/function.h");
-
-remote::Module remote::composeAct0_module = module;
-remote::Module remote::composeAct1_module = module;
-remote::Module remote::composeAct2_module = module;
+module::Module remote::composeAct0_module = mod;
+module::Module remote::composeAct1_module = mod;
+module::Module remote::composeAct2_module = mod;

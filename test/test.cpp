@@ -19,8 +19,8 @@ std::istream& operator>> (std::istream& in, Foo &x) {in >> x.x; return in;}
 static int hello (string arg) {return 1;}
 static void goodbye (unsigned arg, string arg2) {}
 
-const remote::Module hello_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("test.cpp"));
-const remote::Module goodbye_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("test.cpp"));
+const module::Module hello_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), "test.cpp");
+const module::Module goodbye_module = hello_module;
 
 int main (int argc, const char* argv[]) {
 	remote::Function0<int> x = remote::bind (FUN(hello), string("world"));

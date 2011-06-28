@@ -15,7 +15,7 @@ static string echo (string req) {
 	return req;
 }
 
-const remote::Module echo_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("remote.cpp"));
+const module::Module echo_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), "remote.cpp");
 
 void mainClient (remote::Host server) {
 	string line;

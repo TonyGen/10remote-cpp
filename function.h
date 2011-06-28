@@ -8,13 +8,12 @@
 #include <10util/vector.h>
 #include <10util/compile.h>
 #include <10util/type.h>
+#include <10util/module.h>
 #include <boost/shared_ptr.hpp>
 #include <map>
 #include <10util/util.h> // output vector
 
 namespace remote {
-
-typedef compile::LinkContext Module;
 
 class FunSignature {
 	friend bool operator== (const FunSignature& a, const FunSignature& b) {return a.funName == b.funName && a.returnType == b.returnType && a.argTypes == b.argTypes;}
@@ -50,9 +49,9 @@ class FunctionId {
 	friend bool operator>= (const FunctionId& a, const FunctionId& b) {return !(a < b);}
 	friend bool operator<= (const FunctionId& a, const FunctionId& b) {return !(a > b);}
 public:
-	Module module;
+	module::Module module;
 	FunSignature funSig;
-	FunctionId (Module module, FunSignature funSig) : module(module), funSig(funSig) {}
+	FunctionId (module::Module module, FunSignature funSig) : module(module), funSig(funSig) {}
 	FunctionId () {} // for serialization
 };
 }
@@ -60,9 +59,9 @@ public:
 namespace _function {
 
 /** Function transformed to take serial stream of first Z-N args, where Z is total num of args */
-compile::LinkContext defFunction (unsigned N, remote::Module module, std::string funName, remote::FunSignature funSig);
+compile::LinkContext defFunction (unsigned N, module::Module module, std::string funName, remote::FunSignature funSig);
 /** Function transformed to take serial stream of args and serialize output */
-compile::LinkContext defFunction0c (remote::Module module, std::string funName, remote::FunSignature funSig);
+compile::LinkContext defFunction0c (module::Module module, std::string funName, remote::FunSignature funSig);
 
 /** Return this function in its serialized args form. O type must match function return type */
 template <class O> boost::function1<O,std::vector<io::Code> > compileFunction0 (const remote::FunctionId &fun) {
@@ -250,26 +249,26 @@ template <class O, class I, class J, class K, class L> struct Function4 {
 };
 
 /** Construct FunctionN where N is determined by type of function supplied */
-template <class O> Function0<O> fun (Module module, std::string funName, O (*fun) ()) {
+template <class O> Function0<O> fun (module::Module module, std::string funName, O (*fun) ()) {
 	return Function0<O> (Closure (FunctionId (module, FunSignature (funName, fun))));}
-template <class O, class I> Function1<O,I> fun (Module module, std::string funName, O (*fun) (I)) {
+template <class O, class I> Function1<O,I> fun (module::Module module, std::string funName, O (*fun) (I)) {
 	return Function1<O,I> (Closure (FunctionId (module, FunSignature (funName, fun))));}
-template <class O, class I, class J> Function2<O,I,J> fun (Module module, std::string funName, O (*fun) (I,J)) {
+template <class O, class I, class J> Function2<O,I,J> fun (module::Module module, std::string funName, O (*fun) (I,J)) {
 	return Function2<O,I,J> (Closure (FunctionId (module, FunSignature (funName, fun))));}
-template <class O, class I, class J, class K> Function3<O,I,J,K> fun (Module module, std::string funName, O (*fun) (I,J,K)) {
+template <class O, class I, class J, class K> Function3<O,I,J,K> fun (module::Module module, std::string funName, O (*fun) (I,J,K)) {
 	return Function3<O,I,J,K> (Closure (FunctionId (module, FunSignature (funName, fun))));}
-template <class O, class I, class J, class K, class L> Function4<O,I,J,K,L> fun (Module module, std::string funName, O (*fun) (I,J,K,L)) {
+template <class O, class I, class J, class K, class L> Function4<O,I,J,K,L> fun (module::Module module, std::string funName, O (*fun) (I,J,K,L)) {
 	return Function4<O,I,J,K,L> (Closure (FunctionId (module, FunSignature (funName, fun))));}
 
 }
 
 /** Macro to construct a FunctionN from a single function reference. It expects function's module to be found at `functionName_module`. If the function needs template arguments put them in second arg of FUNT without angle brackets. */
 #define FUN(functionName) remote::fun (functionName##_module, #functionName, &functionName)
-#define FUNT(functionName,...) remote::fun (functionName##_module + compile::joinContexts (typeModules<__VA_ARGS__>()), #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), &functionName<__VA_ARGS__>)
+#define FUNT(functionName,...) remote::fun (functionName##_module + module::concat (typeModules<__VA_ARGS__>()), #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), &functionName<__VA_ARGS__>)
 
 /** Same as FUN & FUNT except namespace is supplied separately and module is expected to be found at 'namespace::module'. */
 #define MFUN(namespace_,functionName) remote::fun (namespace_::module, #namespace_ "::" #functionName, & namespace_::functionName)
-#define MFUNT(namespace_,functionName,...) remote::fun (namespace_::module + compile::joinContexts (typeModules<__VA_ARGS__>()), #namespace_ "::" #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), & namespace_::functionName<__VA_ARGS__>)
+#define MFUNT(namespace_,functionName,...) remote::fun (namespace_::module + module::concat (typeModules<__VA_ARGS__>()), #namespace_ "::" #functionName + showTypeArgs (typeNames<__VA_ARGS__>()), & namespace_::functionName<__VA_ARGS__>)
 
 namespace remote {
 
@@ -304,9 +303,9 @@ template <class B, class A> B composeAct0 (Function1<B,A> act2, Function0<A> act
 template <class B, class A, class I> boost::function1<B,I> composeAct1 (Function1<B,A> act2, Function1<A,I> act1) {return boost::bind (_composeAct1<B,A,I>, act2, act1, _1);}
 template <class B, class A, class I, class J> boost::function2<B,I,J> composeAct2 (Function1<B,A> act2, Function2<A,I,J> act1, I i, J j) {return boost::bind (_composeAct2<B,A,I,J>, act2, act1, _1, _2);}
 
-extern remote::Module composeAct0_module;
-extern remote::Module composeAct1_module;
-extern remote::Module composeAct2_module;
+extern module::Module composeAct0_module;
+extern module::Module composeAct1_module;
+extern module::Module composeAct2_module;
 
 }
 
@@ -352,12 +351,6 @@ template <class O, class I, class J, class K, class L> std::ostream& operator<< 
 
 namespace boost {namespace serialization {
 
-template <class Archive> void serialize (Archive & ar, remote::Module & x, const unsigned version) {
-	ar & x.libPaths;
-	ar & x.libNames;
-	ar & x.includePaths;
-	ar & x.headers;
-}
 template <class Archive> void serialize (Archive & ar, remote::FunSignature & x, const unsigned version) {
 	ar & x.funName;
 	ar & x.returnType;
@@ -400,17 +393,13 @@ template <class A, class B, class C, class D> std::vector<TypeName> typeNames ()
 template <template <typename> class A> std::vector<TypeName> typeNames () {
 	return items (typeName<A>());}
 
-template <class A> std::vector<remote::Module> typeModules () {
-	return items (typeModule<A>());}
-template <class A, class B> std::vector<remote::Module> typeModules () {
-	return items (typeModule<A>(), typeModule<B>());}
-template <class A, class B, class C> std::vector<remote::Module> typeModules () {
-	return items (typeModule<A>(), typeModule<B>(), typeModule<C>());}
-template <class A, class B, class C, class D> std::vector<remote::Module> typeModules () {
-	return items (typeModule<A>(), typeModule<B>(), typeModule<C>(), typeModule<D>());}
-template <template <typename> class A> std::vector<remote::Module> typeModules () {
-	return items (typeModule<A>());}
-
-
-template <> inline remote::Module typeModule<remote::Function0> () {
-	return remote::Module ("remote", "remote/function.h");}
+template <class A> std::vector<module::Module> typeModules () {
+	return items (type<A>::module);}
+template <class A, class B> std::vector<module::Module> typeModules () {
+	return items (type<A>::module, type<B>::module);}
+template <class A, class B, class C> std::vector<module::Module> typeModules () {
+	return items (type<A>::module, type<B>::module, type<C>::module);}
+template <class A, class B, class C, class D> std::vector<module::Module> typeModules () {
+	return items (type<A>::module, type<B>::module, type<C>::module, type<D>::module);}
+template <template <typename> class A> std::vector<module::Module> typeModules () {
+	return items (type1<A>::module);}

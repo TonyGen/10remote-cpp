@@ -8,7 +8,7 @@
 
 using namespace std;
 
-remote::Module split_string_module ("10util", "10util/util.h");
+const module::Module split_string_module ("10util", "10util/util.h");
 
 int main (int argc, const char* argv[]) {
 	remote::Function0< vector<string> > x = remote::bind (FUN(split_string), ' ', string("hello world"));

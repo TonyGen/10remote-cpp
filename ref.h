@@ -12,7 +12,7 @@
 
 namespace _remoteref { // private namespace
 
-extern remote::Module module;
+extern module::Module module;
 
 template <class T> struct Record {
 	volatile unsigned version; // used to tell if refCount has changed from a previous version
@@ -82,7 +82,7 @@ public: // private to this file
 
 template <class T> Ref<T> ref (boost::shared_ptr<T> object) {return Ref<T> (object);}
 
-extern Module ref_module;
+extern module::Module ref_module;
 
 }
 

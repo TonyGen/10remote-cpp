@@ -19,7 +19,7 @@ static void echo (int pause, string req) {
 	cout << req << endl;
 }
 
-const remote::Module echo_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("fork.cpp"));
+const module::Module echo_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), "fork.cpp");
 
 static void fork (remote::Host server, vector <string> args) {
 	string rest = concat (intersperse (string(" "), drop (1, args)));

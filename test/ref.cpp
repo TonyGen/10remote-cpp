@@ -28,8 +28,8 @@ static boost::shared_ptr<Resource> newResource () {
 	return boost::shared_ptr<Resource> (new Resource);
 }
 
-const remote::Module setValue_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("ref.cpp"));
-const remote::Module newResource_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), items<string>("ref.cpp"));
+const module::Module setValue_module (".", ".", items<string>("10remote", "10util", "boost_thread-mt"), "ref.cpp");
+const module::Module newResource_module = setValue_module;
 
 void mainClient (remote::Host server) {
 	cout << "connect to " << remote::hostPort (server) << endl;

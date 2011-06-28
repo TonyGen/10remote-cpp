@@ -27,17 +27,19 @@ Create and start server:
 Define variable library and install on client and server in their working directory. In this case, client and server have same machine and directory, and library is a header-only library:
 
 	$ cat > var.h
+	#pragma once
 	#include <boost/shared_ptr.hpp>
-	#include <10util/compile.h>
+	#include <10util/module.h>
 	#define Var(T) boost::shared_ptr< var::var<T> >
 	namespace var {
 	template <class T> struct var {T value; var(T val) : value(val) {}};
 	template <class T> Var(T) newVar (T val) {return Var(T)(new var<T>(val));}
 	template <class T> T readVar (Var(T) var) {return var->value;}
 	template <class T> void writeVar (T val, Var(T) var) {var->value = val;}
-	const compile::LinkContext module (".", ".", std::vector<std::string>(), items<std::string>("var.h"));
+	const module::Module module (".", ".", std::vector<std::string>(), "var.h");
 	}
-	template <class T> inline compile::LinkContext typeModule< var::var<T> >() {return var::module;}
+	template <class T> struct type< var::var<T> > {static module::Module module;};
+	template <class T> module::Module type< var::var<T> >::module = var::module + type<T>::module;
 	^D
 
 Create and run client:
@@ -52,7 +54,7 @@ Create and run client:
 		remote::apply (remote::bind (MFUNT(var,writeVar,int), 1), ref);
 		std::cout << remote::apply (MFUNT(var,readVar,int), ref) << std::endl;}
 	^D
-	$ g++ -I/opt/local/include -L/opt/local/lib -I. -l10remote -lboost_thread-mt -lboost_serialization-mt -o client client.cpp
+	$ g++ -I/opt/local/include -L/opt/local/lib -I. -l10remote -l10util -lboost_thread-mt -lboost_serialization-mt -o client client.cpp
 	$ ./client
 
 ### Installing
