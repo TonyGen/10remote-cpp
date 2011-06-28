@@ -28,15 +28,3 @@ namespace remote {
 	void parallel (std::vector< std::pair< Host, Function0<void> > > controlActions, std::vector< std::pair< Host, Function0<void> > > continuousActions);
 
 }
-
-template <> inline remote::Module typeModule<boost::thread> () {
-	return remote::Module ("boost_thread-mt", "boost/thread.hpp");
-}
-template <> inline remote::Module typeModule< remote::Ref<boost::thread> > () {
-	return remote::Module ("remote", "remote/ref.h") + typeModule<boost::thread>();
-}
-template <> inline remote::Module typeModule< boost::shared_ptr<boost::thread> > () {
-	remote::Module mod;
-	mod.headers.push_back ("#include <boost/shared_ptr.hpp>"); // header only
-	return mod + typeModule<boost::thread>();
-}

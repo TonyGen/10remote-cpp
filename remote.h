@@ -37,10 +37,3 @@ namespace remote {
 	Host thisHost ();
 
 }
-
-template <> inline remote::Module typeModule<int> () {
-	return remote::Module();
-}
-template <> inline remote::Module typeModule<void> () {
-	return remote::Module();
-}

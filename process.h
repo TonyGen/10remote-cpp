@@ -31,18 +31,3 @@ namespace remote {
 	program::Program program (Process);
 
 }
-
-template <> inline remote::Module typeModule<program::Program> () {
-	return remote::Module ("10util", "10util/program.h");
-}
-template <> inline remote::Module typeModule<process::Process_> () {
-	return remote::Module ("10util", "10util/process.h");
-}
-template <> inline remote::Module typeModule< remote::Ref<process::Process_> > () {
-	return remote::Module ("remote", "remote/ref.h") + typeModule<process::Process_>();
-}
-template <> inline remote::Module typeModule< boost::shared_ptr<process::Process_> > () {
-	remote::Module mod;
-	mod.headers.push_back ("#include <boost/shared_ptr.hpp>"); // header only
-	return mod + typeModule<process::Process_>();
-}

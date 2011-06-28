@@ -1,5 +1,5 @@
 /* A remote function is one identified by its name, the library it is defined in, and the header file it is declared in.
- * `load` will load the function from the specified library returning its address ready to be executed. */
+ * Invoking a remote Function on the local machine will load the function from the specified library then apply it to the supplied arguments. You may also bind arguments to a function creating a new function expecting the remaining arguments (similar to boost::bind). The partially applied function can be transport to another machine where it will take the remaining arguments and execute. */
 
 #pragma once
 
@@ -390,30 +390,15 @@ template <class Archive, class O, class I, class J, class K, class L> void seria
 }}
 
 template <class A> std::vector<TypeName> typeNames () {
-	return items (typeName<A>());
-}
+	return items (typeName<A>());}
 template <class A, class B> std::vector<TypeName> typeNames () {
-	return items (typeName<A>(), typeName<B>());
-}
+	return items (typeName<A>(), typeName<B>());}
 template <class A, class B, class C> std::vector<TypeName> typeNames () {
-	return items (typeName<A>(), typeName<B>(), typeName<C>());
-}
+	return items (typeName<A>(), typeName<B>(), typeName<C>());}
 template <class A, class B, class C, class D> std::vector<TypeName> typeNames () {
-	return items (typeName<A>(), typeName<B>(), typeName<C>(), typeName<D>());
-}
+	return items (typeName<A>(), typeName<B>(), typeName<C>(), typeName<D>());}
 template <template <typename> class A> std::vector<TypeName> typeNames () {
-	return items (typeName<A>());
-}
-
-std::string showTypeArgs (std::vector<TypeName> ts);
-
-/** Must specialize for each type */
-template <class T> remote::Module typeModule ();
-template <template <typename> class T> remote::Module typeModule ();
-
-//template <> inline remote::Module typeModule<int> () {return remote::Module("int","int.h");}
-template <> inline remote::Module typeModule<remote::Function0> () {
-	return remote::Module ("remote", "remote/function.h");}
+	return items (typeName<A>());}
 
 template <class A> std::vector<remote::Module> typeModules () {
 	return items (typeModule<A>());}
@@ -425,3 +410,7 @@ template <class A, class B, class C, class D> std::vector<remote::Module> typeMo
 	return items (typeModule<A>(), typeModule<B>(), typeModule<C>(), typeModule<D>());}
 template <template <typename> class A> std::vector<remote::Module> typeModules () {
 	return items (typeModule<A>());}
+
+
+template <> inline remote::Module typeModule<remote::Function0> () {
+	return remote::Module ("remote", "remote/function.h");}

@@ -84,20 +84,34 @@ template <class T> Ref<T> ref (boost::shared_ptr<T> object) {return Ref<T> (obje
 
 extern Module ref_module;
 
+}
+
+namespace _remoteref {
+
+template <class B, class A> remote::Ref<B> composeAct0RefPtr (remote::Function1< remote::Ref<B>, boost::shared_ptr<A> > act2, remote::Function0< boost::shared_ptr<A> > act1) {return act2 (act1());}
+
+template <class B, class A> B composeAct0_Ptr (remote::Function1< B, boost::shared_ptr<A> > act2, remote::Function0< boost::shared_ptr<A> > act1) {return act2 (act1());}
+
+template <class B, class A> boost::shared_ptr<B> composeAct0PtrPtr (remote::Function1< boost::shared_ptr<B>, boost::shared_ptr<A> > act2, remote::Function0< boost::shared_ptr<A> > act1) {return act2 (act1());}
+
+}
+
+namespace remote {
+
 /** Same as `remote::eval` except return remote reference to result. */
 template <class O> Ref<O> evalR (Host host, Function0< boost::shared_ptr<O> > action) {
-	return eval (host, bind (FUNT(remote::composeAct0,remote::Ref<O>,boost::shared_ptr<O>), FUNT(remote::ref,O), action));
+	return eval (host, bind (MFUNT(_remoteref,composeAct0RefPtr,O,O), FUNT(remote::ref,O), action));
 }
 
 /** Apply action to remote object. */
 template <class O, class T> O apply (Function1< O, boost::shared_ptr<T> > action, Ref<T> ref) {
-	Function0<O> act = bind (FUNT(remote::composeAct0,O,boost::shared_ptr<T>), action, bind (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
+	Function0<O> act = bind (MFUNT(_remoteref,composeAct0_Ptr,O,T), action, bind (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
 	return eval (ref.ref_->host, act);
 }
 
 /** Same as `apply` except return remote reference to result. */
 template <class O, class T> Ref<O> applyR (Function1< boost::shared_ptr<O>, boost::shared_ptr<T> > action, Ref<T> ref) {
-	Function0< boost::shared_ptr<O> > act = bind (FUNT(remote::composeAct0,boost::shared_ptr<O>,boost::shared_ptr<T>), action, bind (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
+	Function0< boost::shared_ptr<O> > act = bind (MFUNT(_remoteref,composeAct0PtrPtr,O,T), action, bind (MFUNT(_remoteref,deref,T), ref.ref_->localRef));
 	return evalR (ref.ref_->host, act);
 }
 

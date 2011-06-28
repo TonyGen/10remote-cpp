@@ -57,18 +57,6 @@ std::map < remote::FunctionId, boost::shared_ptr<void> > _function::cache3; // v
 std::map < remote::FunctionId, boost::shared_ptr<void> > _function::cache4; // void is cast of boost::function1<O,io::Code,I,J,K,L>
 std::map < remote::FunctionId, boost::shared_ptr< boost::function1<io::Code,std::vector<io::Code> > > > _function::cache0c; // for getFunction0c
 
-
-std::string showTypeArgs (std::vector<TypeName> ts) {
-	std::stringstream ss;
-	ss << "< ";
-	for (unsigned i = 0; i < ts.size(); i ++) {
-		ss << ts[i];
-		if (i < ts.size() - 1) ss << ", ";
-	}
-	ss << " >";
-	return ss.str();
-}
-
 static remote::Module module ("remote", "remote/function.h");
 
 remote::Module remote::composeAct0_module = module;
