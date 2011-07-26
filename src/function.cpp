@@ -12,6 +12,7 @@ compile::LinkContext _function::defFunction (unsigned N, module::Module mod, std
 	ctx.libPaths.push_back ("/opt/local/lib");
 	ctx.includePaths.push_back ("/opt/local/include");
 	ctx.libNames.push_back ("boost_serialization-mt");
+	ctx.libNames.push_back ("10util");
 	ctx.headers.push_back ("#include <10util/io.h>");
 	ctx.headers.push_back ("#include <cassert>");
 	std::stringstream ss;

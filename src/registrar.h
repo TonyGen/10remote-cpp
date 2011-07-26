@@ -46,13 +46,13 @@ namespace registrar {
 		}
 		T* operator-> () {
 			boost::shared_ptr<T> ptr = deref();
-			if (ptr) return ptr.get();
-			else except::raise (std::runtime_error ("dangling ref"));
+			if (!ptr) except::raise (std::runtime_error ("dangling ref"));
+			return ptr.get();
 		}
 		T& operator* () {
 			boost::shared_ptr<T> ptr = deref();
-			if (ptr) return *ptr;
-			else except::raise (std::runtime_error ("dangling ref"));
+			if (!ptr) except::raise (std::runtime_error ("dangling ref"));
+			return *ptr;
 		}
 		boost::shared_ptr<T> remove() {
 			// TODO: speed up using find and iterator remove

@@ -1,8 +1,8 @@
 # Remote Procedure Call
 
-A few things make this library different than other RPC libraries available for C++.
+A few things make this library different from other RPC libraries available for C++.
 
-1. Procedures do not have to be registered ahead of time at the server. The client can call any C++ function that is installed on the server. Installed means the library (.so file) and it header files exists on the server. This means the client has to specify the library and header that defines the function he wants to call.
+1. Procedures do not have to be registered ahead of time at the server. The client can call any C++ function that is installed on the server. Installed means the library (.so file) and it header files exists on the server. This allows easy dynamic loading and execution of new code. The tradeoff is the client has to specify the library and header where the function is defined.
 
 2. Both the client and server must be written in C++. This restriction alleviates the need for an interface description language (IDL).
 
@@ -19,7 +19,7 @@ Create and start server:
 	int main () {
 		boost::shared_ptr< boost::thread > t = remote::listen ("localhost:7777");
 		t->join(); // wait forever
-		return 0;}
+		return 0; }
 	^D
 	$ g++ -I/opt/local/include -L/opt/local/lib -l10remote -lboost_thread-mt -lboost_serialization-mt -o server server.cpp
 	$ ./server &
@@ -50,9 +50,9 @@ Create and run client:
 	#include <var.h>
 	int main () {
 		remote::Ref< var::var<int> > ref = remote::evalR ("localhost:7777", remote::bind (MFUNT(var,newVar,int), 0));
-		std::cout << remote::apply (MFUNT(var,readVar,int), ref) << std::endl;
-		remote::apply (remote::bind (MFUNT(var,writeVar,int), 1), ref);
-		std::cout << remote::apply (MFUNT(var,readVar,int), ref) << std::endl;}
+		for (int i = 1; i < 5; i++) {
+			remote::apply (remote::bind (MFUNT(var,writeVar,int), i), ref);
+			std::cout << remote::apply (MFUNT(var,readVar,int), ref) << std::endl; }}
 	^D
 	$ g++ -I/opt/local/include -L/opt/local/lib -I. -l10remote -l10util -lboost_thread-mt -lboost_serialization-mt -o client client.cpp
 	$ ./client

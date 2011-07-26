@@ -120,9 +120,10 @@ extern std::map < remote::FunctionId, boost::shared_ptr<void> > cache3; // void 
 extern std::map < remote::FunctionId, boost::shared_ptr<void> > cache4; // void = boost::function1<O,io::Code,I,J,K,L>
 extern std::map < remote::FunctionId, boost::shared_ptr< boost::function1<io::Code,std::vector<io::Code> > > > cache0c; // getFunction0c
 
-template <class K, class V> V cached (std::map < K, boost::shared_ptr<void> > cache, V (*proc) (const K &), const K &key) {
+template <class K, class V> V cached (std::map < K, boost::shared_ptr<void> > &cache, V (*proc) (const K &), const K &key) {
 	boost::shared_ptr<void> ptr = cache [key];
 	if (!ptr) {
+		std::cout << "Compiling: " << key << std::endl;
 		V val = proc (key);
 		ptr = boost::static_pointer_cast <void,V> (boost::shared_ptr<V> (new V (val)));
 		cache [key] = ptr;
@@ -146,6 +147,15 @@ template <class O, class I, class J, class K, class L> boost::function5<O,std::v
 inline boost::function1<io::Code,std::vector<io::Code> > getFunction0c (const remote::FunctionId &funId) {
 	boost::shared_ptr< boost::function1<io::Code,std::vector<io::Code> > > funPtr = cache0c [funId];
 	if (!funPtr) {
+
+		std::cout << "Compiling: " << funId.module << " ";
+		std::cout << funId.funSig.returnType << " " << funId.funSig.funName << " (";
+		for (unsigned i = 0; i < funId.funSig.argTypes.size(); i++) {
+			std::cout << funId.funSig.argTypes[i];
+			if (i < funId.funSig.argTypes.size() - 1) std::cout << ", ";
+		}
+		std::cout << ")" << std::endl;
+
 		boost::function1<io::Code,std::vector<io::Code> > fun = compileFunction0c (funId);
 		funPtr = boost::shared_ptr< boost::function1<io::Code,std::vector<io::Code> > > (new boost::function1<io::Code,std::vector<io::Code> > (fun));
 		cache0c [funId] = funPtr;
