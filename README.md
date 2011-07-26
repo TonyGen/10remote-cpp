@@ -16,13 +16,13 @@ Create and start server:
 
 	$ cat > server.cpp
 	#include <10remote/remote.h>
-	int main () {
-		boost::shared_ptr< boost::thread > t = remote::listen ("localhost:7777");
+	int main (int argc, char* argv[]) {
+		boost::shared_ptr< boost::thread > t = remote::listen (argv[1]);
 		t->join(); // wait forever
 		return 0; }
 	^D
-	$ g++ -I/opt/local/include -L/opt/local/lib -l10remote -lboost_thread-mt -lboost_serialization-mt -o server server.cpp
-	$ ./server &
+	$ g++ -I/opt/local/include -L/opt/local/lib -ldl -l10remote -lboost_thread-mt -lboost_serialization-mt -o server server.cpp
+	$ ./server localhost:7777 &
 
 Define variable library and install on client and server in their working directory. In this case, client and server have same machine and directory, and library is a header-only library:
 
@@ -30,7 +30,7 @@ Define variable library and install on client and server in their working direct
 	#pragma once
 	#include <boost/shared_ptr.hpp>
 	#include <10util/module.h>
-	#define Var(T) boost::shared_ptr< var::var<T> >
+	#define Var(T) boost::shared_ptr< var<T> >
 	namespace var {
 	template <class T> struct var {T value; var(T val) : value(val) {}};
 	template <class T> Var(T) newVar (T val) {return Var(T)(new var<T>(val));}
@@ -48,14 +48,15 @@ Create and run client:
 	#include <iostream>
 	#include <10remote/ref.h>
 	#include <var.h>
-	int main () {
-		remote::Ref< var::var<int> > ref = remote::evalR ("localhost:7777", remote::bind (MFUNT(var,newVar,int), 0));
+	int main (int argc, char* argv[]) {
+		remote::Ref< var::var<int> > ref = remote::evalR (argv[1], remote::bind (MFUNT(var,newVar,int), 0));
 		for (int i = 1; i < 5; i++) {
 			remote::apply (remote::bind (MFUNT(var,writeVar,int), i), ref);
-			std::cout << remote::apply (MFUNT(var,readVar,int), ref) << std::endl; }}
+			std::cout << remote::apply (MFUNT(var,readVar,int), ref) << std::endl; }
+		return 0; }
 	^D
-	$ g++ -I/opt/local/include -L/opt/local/lib -I. -l10remote -l10util -lboost_thread-mt -lboost_serialization-mt -o client client.cpp
-	$ ./client
+	$ g++ -I/opt/local/include -L/opt/local/lib -I. -ldl -l10remote -l10util -lboost_thread-mt -lboost_serialization-mt -o client client.cpp
+	$ ./client localhost:7777
 
 ### Installing
 

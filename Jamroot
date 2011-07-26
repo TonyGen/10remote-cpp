@@ -1,5 +1,6 @@
 project : source-location src : requirements <include>/opt/local/include <variant>release ;
 
+lib dl : : <name>dl ;
 lib sys : : <name>boost_system-mt <search>/opt/local/lib ;
 lib fs : : <name>boost_filesystem-mt <search>/opt/local/lib ;
 lib th : : <name>boost_thread-mt <search>/opt/local/lib ;
@@ -15,7 +16,7 @@ cpp-pch registrar : registrar.h : <optimization>off ;
 cpp-pch remote : remote.h : <optimization>off ;
 cpp-pch thread : thread.h : <optimization>off ;
 
-lib 10remote : [ glob *.cpp ] sys fs th ser 10util ;
+lib 10remote : [ glob *.cpp ] dl sys fs th ser 10util ;
 
 install ilib : 10remote : <location>/usr/local/lib ;
 install ihead : [ glob *.h ]
