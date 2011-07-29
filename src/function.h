@@ -182,7 +182,7 @@ struct Closure {
 		} catch (std::exception &e) {
 			std::cerr << fun.funSig.funName << " : " << args << std::endl;
 			std::cerr << typeName(e) << ": " << e.what() << std::endl;
-			throw e;
+			throw;
 		}
 	}
 };
@@ -197,7 +197,7 @@ template <class O> struct Function0 {
 		} catch (std::exception &e) {
 			std::cerr << closure.fun.funSig.funName << " : " << closure.args << std::endl;
 			std::cerr << typeName(e) << ": " << e.what() << std::endl;
-			throw e;
+			throw;
 		}
 	}
 };
@@ -211,7 +211,7 @@ template <class O, class I> struct Function1 {
 		} catch (std::exception &e) {
 			std::cerr << closure.fun.funSig.funName << " : " << closure.args << std::endl;
 			std::cerr << typeName(e) << ": " << e.what() << std::endl;
-			throw e;
+			throw;
 		}
 	}
 };
@@ -225,7 +225,7 @@ template <class O, class I, class J> struct Function2 {
 		} catch (std::exception &e) {
 			std::cerr << closure.fun.funSig.funName << " : " << closure.args << std::endl;
 			std::cerr << typeName(e) << ": " << e.what() << std::endl;
-			throw e;
+			throw;
 		}
 	}
 };
@@ -239,7 +239,7 @@ template <class O, class I, class J, class K> struct Function3 {
 		} catch (std::exception &e) {
 			std::cerr << closure.fun.funSig.funName << " : " << closure.args << std::endl;
 			std::cerr << typeName(e) << ": " << e.what() << std::endl;
-			throw e;
+			throw;
 		}
 	}
 };
@@ -253,7 +253,7 @@ template <class O, class I, class J, class K, class L> struct Function4 {
 		} catch (std::exception &e) {
 			std::cerr << closure.fun.funSig.funName << " : " << closure.args << std::endl;
 			std::cerr << typeName(e) << ": " << e.what() << std::endl;
-			throw e;
+			throw;
 		}
 	}
 };
