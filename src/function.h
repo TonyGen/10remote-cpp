@@ -191,6 +191,8 @@ template <class O> struct Function0 {
 	Closure closure;
 	Function0 (Closure closure) : closure(closure) {}
 	Function0 () {} // for serialization
+	boost::function0<O> operator* () {
+		return boost::bind (_function::getFunction0<O>(closure.fun), closure.args);}
 	O operator() () {
 		try {
 			return _function::getFunction0<O>(closure.fun) (closure.args);
@@ -205,6 +207,8 @@ template <class O, class I> struct Function1 {
 	Closure closure;
 	Function1 (Closure closure) : closure(closure) {}
 	Function1 () {} // for serialization
+	boost::function1<O,I> operator* () {
+		return boost::bind (_function::getFunction1<O,I>(closure.fun), closure.args, _1);}
 	O operator() (I arg1) {
 		try {
 			return _function::getFunction1<O,I>(closure.fun) (closure.args, arg1);
@@ -219,6 +223,8 @@ template <class O, class I, class J> struct Function2 {
 	Closure closure;
 	Function2 (Closure closure) : closure(closure) {}
 	Function2 () {} // for serialization
+	boost::function2<O,I,J> operator* () {
+		return boost::bind (_function::getFunction2<O,I,J>(closure.fun), closure.args, _1, _2);}
 	O operator() (I arg1, J arg2) {
 		try {
 			return _function::getFunction2<O,I,J>(closure.fun) (closure.args, arg1, arg2);
@@ -233,6 +239,8 @@ template <class O, class I, class J, class K> struct Function3 {
 	Closure closure;
 	Function3 (Closure closure) : closure(closure) {}
 	Function3 () {} // for serialization
+	boost::function3<O,I,J,K> operator* () {
+		return boost::bind (_function::getFunction3<O,I,J,K>(closure.fun), closure.args, _1, _2, _3);}
 	O operator() (I arg1, J arg2, K arg3) {
 		try {
 			return _function::getFunction3<O,I,J,K>(closure.fun) (closure.args, arg1, arg2, arg3);
@@ -247,6 +255,8 @@ template <class O, class I, class J, class K, class L> struct Function4 {
 	Closure closure;
 	Function4 (Closure closure) : closure(closure) {}
 	Function4 () {} // for serialization
+	boost::function4<O,I,J,K,L> operator* () {
+		return boost::bind (_function::getFunction4<O,I,J,K,L>(closure.fun), closure.args, _1, _2, _3, 4);}
 	O operator() (I arg1, J arg2, K arg3, L arg4) {
 		try {
 			return _function::getFunction4<O,I,J,K,L>(closure.fun) (closure.args, arg1, arg2, arg3, arg4);
