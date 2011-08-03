@@ -2,21 +2,18 @@
 
 #pragma once
 
-#include <vector>
-#include <utility>
 #include <10util/process.h>
-#include "function.h"
-#include "ref.h"
+#include "remote.h"
 
 namespace remote {
 
-	typedef remote::Ref<process::Process_> Process;
+	typedef remote::Remote<process::Process> Process;
 
 	/** Launch program on remote host. Return remote reference to its process. */
-	Process launch (remote::Host host, program::Program program);
+	Process launch (program::Program program, remote::Host host);
 
 	/** Rerun program on same host, without execute prepCommand first */
-	void restart (Process deadProcess);
+	Process restart (Process deadProcess);
 
 	/** Wait for process to terminate returning its exit code */
 	int waitFor (Process process);

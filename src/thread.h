@@ -4,17 +4,15 @@
 
 #include <vector>
 #include <utility>
-#include <boost/thread.hpp>
 #include <10util/thread.h>
-#include "function.h"
-#include "ref.h"
+#include "remote.h"
 
 namespace remote {
 
-	typedef remote::Ref<boost::thread> Thread;
+	typedef remote::Remote<thread::Thread> Thread;
 
 	/** Fork thread on host to execute action */
-	Thread fork (Host host, Function0<void> action);
+	Thread fork (Function0<void> action, std::string description, Host host);
 
 	/** Wait for thread to complete */
 	void join (Thread);
@@ -25,6 +23,6 @@ namespace remote {
 	void interruptAll (std::vector<Thread> ts);
 
 	/** Fork actions on associated hosts and wait for control actions to finish then terminate continuous actions. If one action fails then terminate all actions and rethrow failure in main thread */
-	void parallel (std::vector< std::pair< Host, Function0<void> > > controlActions, std::vector< std::pair< Host, Function0<void> > > continuousActions);
+	void parallel (std::vector< std::pair<Function0<void>,Host> > controlActions, std::vector< std::pair<Function0<void>,Host> > continuousActions);
 
 }

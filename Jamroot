@@ -11,8 +11,6 @@ lib 10util : : <name>10util ;
 cpp-pch call : call.h : <optimization>off ;
 cpp-pch function : function.h : <optimization>off ;
 cpp-pch process : process.h : <optimization>off ;
-cpp-pch ref : ref.h : <optimization>off ;
-cpp-pch registrar : registrar.h : <optimization>off ;
 cpp-pch remote : remote.h : <optimization>off ;
 cpp-pch thread : thread.h : <optimization>off ;
 
