@@ -37,7 +37,14 @@ namespace remote {
 	}
 
 	/** A value that is pertinent to some host */
-	template <class T> struct Remote {
+	template <class T> class Remote {
+		friend bool operator== (const Remote& a, const Remote& b) {return a.value == b.value && a.host == b.host;}
+		friend bool operator< (const Remote& a, const Remote& b) {return a.value < b.value || (a.value == b.value && a.host < b.host);}
+		friend bool operator!= (const Remote& a, const Remote& b) {return !(a == b);}
+		friend bool operator> (const Remote& a, const Remote& b) {return b < a;}
+		friend bool operator>= (const Remote& a, const Remote& b) {return !(a < b);}
+		friend bool operator<= (const Remote& a, const Remote& b) {return !(a > b);}
+	public:
 		T value;
 		Host host;
 		Remote (T value, Host host) : value(value), host(host) {}
