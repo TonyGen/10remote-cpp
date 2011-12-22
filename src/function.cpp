@@ -9,8 +9,8 @@ template <> module::Module type1<remote::Function0>::module = mod;
 /** Function transformed to take first Z-N args encoded, where Z is num total args */
 compile::LinkContext _function::defFunction (unsigned N, module::Module mod, std::string funName, remote::FunSignature funSig) {
 	compile::LinkContext ctx (mod);
-	ctx.libPaths.push_back ("/opt/local/lib");
-	ctx.includePaths.push_back ("/opt/local/include");
+	ctx.libPaths.push_back ("/usr/local/lib");
+	ctx.includePaths.push_back ("/usr/local/include");
 	ctx.libNames.push_back ("boost_serialization-mt");
 	ctx.libNames.push_back ("10util");
 	ctx.headers.push_back ("#include <10util/io.h>");

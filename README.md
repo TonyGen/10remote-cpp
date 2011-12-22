@@ -18,8 +18,8 @@ Create and start server:
 		boost::shared_ptr< boost::thread > t = remote::listen (argv[1]);
 		t->join(); // wait forever
 		return 0; }
-	^D
-	$ g++ -I/opt/local/include -L/opt/local/lib -ldl -l10remote -lboost_thread-mt -lboost_serialization-mt -o server server.cpp
+	^d
+	$ g++ -I/usr/local/include -L/usr/local/lib -ldl -l10remote -lboost_thread-mt -lboost_serialization-mt -o server server.cpp
 	$ ./server localhost:7777 &
 
 Define application library and install on client and server in their working directory. In this case, client and server have same machine and directory:
@@ -32,14 +32,14 @@ Define application library and install on client and server in their working dir
 		extern int global;
 		void set (int n);
 		int get (); }
-	^D
+	^d
 	$ cat > example.cpp
 	#include "example.h"
 	int example::global = 0;
 	void example::set (int n) {global = n;}
 	int example::get () {return global;}
-	^D
-	$ g++ -fPIC -shared -rdynamic -I/opt/local/include -l10util -o libexample.so example.cpp
+	^d
+	$ g++ -fPIC -shared -rdynamic -I/usr/local/include -l10util -o libexample.so example.cpp
 
 Create and run client:
 
@@ -54,8 +54,8 @@ Create and run client:
 			int n = remote::eval (MFUN(example,get), host);
 			std::cout << n << std::endl; }
 		return 0; }
-	^D
-	$ g++ -I/opt/local/include -L/opt/local/lib -I. -L. -lexample -ldl -l10remote -l10util -lboost_thread-mt -lboost_serialization-mt -o client client.cpp
+	^d
+	$ g++ -I/usr/local/include -L/usr/local/lib -I. -L. -lexample -ldl -l10remote -l10util -lboost_thread-mt -lboost_serialization-mt -o client client.cpp
 	$ ./client localhost:7777
 
 ### Installing

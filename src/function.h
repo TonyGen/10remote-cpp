@@ -123,7 +123,7 @@ extern std::map < remote::FunctionId, boost::shared_ptr< boost::function1<io::Co
 template <class K, class V> V cached (std::map < K, boost::shared_ptr<void> > &cache, V (*proc) (const K &), const K &key) {
 	boost::shared_ptr<void> ptr = cache [key];
 	if (!ptr) {
-		std::cout << "Compiling: " << key << std::endl;
+		std::cout << "Loading: " << key << std::endl;
 		V val = proc (key);
 		ptr = boost::static_pointer_cast <void,V> (boost::shared_ptr<V> (new V (val)));
 		cache [key] = ptr;
@@ -148,7 +148,7 @@ inline boost::function1<io::Code,std::vector<io::Code> > getFunction0c (const re
 	boost::shared_ptr< boost::function1<io::Code,std::vector<io::Code> > > funPtr = cache0c [funId];
 	if (!funPtr) {
 
-		std::cout << "Compiling: " << funId.module << " ";
+		std::cout << "Loading: " << funId.module << " ";
 		std::cout << funId.funSig.returnType << " " << funId.funSig.funName << " (";
 		for (unsigned i = 0; i < funId.funSig.argTypes.size(); i++) {
 			std::cout << funId.funSig.argTypes[i];
